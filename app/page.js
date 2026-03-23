@@ -66,8 +66,12 @@ export default function App() {
       await supabase.from('events').insert({ client_id: form.client_id, name: form.name, date: form.date, city: form.city || '', location: form.location || '', commission_waived: !!form.commission_waived })
     } else if (modal === 'editEvent') {
       await supabase.from('events').update({ name: form.name, commission_waived: !!form.commission_waived }).eq('id', form.id)
-    } else if (modal === 'addExpense') {
-      await supabase.from('expenses').insert({ client_id: form.client_id, event_id: form.event_id, description: form.description || '', amount: Number(form.amount) || 0, date: form.date, category: form.category, vendor: form.vendor || '', added_by: user })
+    } else if (modal === 'addExpense' || modal === 'editExpense') {
+      if (form.id) {
+        await supabase.from('expenses').update({ description: form.description || '', amount: Number(form.amount) || 0, date: form.date, category: form.category, vendor: form.vendor || '' }).eq('id', form.id)
+      } else {
+        await supabase.from('expenses').insert({ client_id: form.client_id, event_id: form.event_id, description: form.description || '', amount: Number(form.amount) || 0, date: form.date, category: form.category, vendor: form.vendor || '', added_by: user })
+      }
     } else if (modal === 'addInvoice' || modal === 'editInvoice') {
       if (form.id) {
         await supabase.from('invoices').update({ amount: Number(form.amount), date: form.date, status: form.status, notes: form.notes || '' }).eq('id', form.id)
@@ -80,6 +84,12 @@ export default function App() {
     closeModal()
     await load()
     if (eventDetail) setEventDetail(data.events.find(e => e.id === eventDetail.id) || eventDetail)
+  }
+
+  const deleteRecord = async (table, id) => {
+    if (!confirm('Are you sure you want to delete this?')) return
+    await supabase.from(table).delete().eq('id', id)
+    await load()
   }
 
   const eventsForClient = cid => form.client_id === cid ? data.events.filter(e => e.client_id === form.client_id) : data.events.filter(e => e.client_id === form.client_id)
@@ -285,8 +295,8 @@ export default function App() {
             <span style={{ fontSize: 14, fontWeight: 700 }}>Expenses</span>
             <button style={s.btnSm} onClick={() => openModal('addExpense', { client_id: event.client_id, event_id: event.id })}>+ Add</button>
           </div>
-          <table style={s.table}><thead><tr>{['Date', 'Category', 'Vendor', 'Description', 'Amount', 'By'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
-            <tbody>{exps.length ? exps.map(e => <tr key={e.id}><td style={s.td}>{e.date}</td><td style={s.td}><span style={s.tag}>{e.category}</span></td><td style={s.td}>{e.vendor}</td><td style={{ ...s.td, color: '#666' }}>{e.description}</td><td style={{ ...s.td, fontWeight: 700 }}>{fmt(e.amount)}</td><td style={{ ...s.td, color: '#aaa' }}>{e.added_by}</td></tr>) : <tr><td colSpan={6} style={{ ...s.td, textAlign: 'center', color: '#aaa' }}>None yet</td></tr>}</tbody>
+          <table style={s.table}><thead><tr>{['Date', 'Category', 'Vendor', 'Description', 'Amount', 'By', ''].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+            <tbody>{exps.length ? exps.map(e => <tr key={e.id}><td style={s.td}>{e.date}</td><td style={s.td}><span style={s.tag}>{e.category}</span></td><td style={s.td}>{e.vendor}</td><td style={{ ...s.td, color: '#666' }}>{e.description}</td><td style={{ ...s.td, fontWeight: 700 }}>{fmt(e.amount)}</td><td style={{ ...s.td, color: '#aaa' }}>{e.added_by}</td><td style={{ ...s.td, display: 'flex', gap: 4 }}><button style={s.btnSm} onClick={ev => { ev.stopPropagation(); openModal('editExpense', { id: e.id, client_id: e.client_id, event_id: e.event_id, description: e.description, amount: e.amount, date: e.date, category: e.category, vendor: e.vendor }) }}>Edit</button><button style={{ ...s.btnSm, color: '#D85A30', borderColor: '#D85A30' }} onClick={ev => { ev.stopPropagation(); deleteRecord('expenses', e.id) }}>Delete</button></td></tr>) : <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', color: '#aaa' }}>None yet</td></tr>}</tbody>
           </table>
         </div>
 
@@ -319,8 +329,8 @@ export default function App() {
   const AllExpenses = () => (
     <div style={s.content}>
       <div style={s.sectionHdr}><span style={{ fontSize: 14, fontWeight: 700 }}>All expenses ({data.expenses.length})</span><button style={s.btnSm} onClick={() => openModal('addExpense', { client_id: data.clients[0]?.id, event_id: data.events[0]?.id })}>+ Add</button></div>
-      <table style={s.table}><thead><tr>{['Date', 'Client', 'Event', 'Category', 'Vendor', 'Amount', 'By'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
-        <tbody>{data.expenses.map(e => <tr key={e.id}><td style={s.td}>{e.date}</td><td style={s.td}>{clientName(e.client_id)}</td><td style={{ ...s.td, color: '#666' }}>{eventName(e.event_id)}</td><td style={s.td}><span style={s.tag}>{e.category}</span></td><td style={s.td}>{e.vendor}</td><td style={{ ...s.td, fontWeight: 700 }}>{fmt(e.amount)}</td><td style={{ ...s.td, color: '#aaa' }}>{e.added_by}</td></tr>)}</tbody>
+      <table style={s.table}><thead><tr>{['Date', 'Client', 'Event', 'Category', 'Vendor', 'Amount', 'By', ''].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+        <tbody>{data.expenses.map(e => <tr key={e.id}><td style={s.td}>{e.date}</td><td style={s.td}>{clientName(e.client_id)}</td><td style={{ ...s.td, color: '#666' }}>{eventName(e.event_id)}</td><td style={s.td}><span style={s.tag}>{e.category}</span></td><td style={s.td}>{e.vendor}</td><td style={{ ...s.td, fontWeight: 700 }}>{fmt(e.amount)}</td><td style={{ ...s.td, color: '#aaa' }}>{e.added_by}</td><td style={{ ...s.td, display: 'flex', gap: 4 }}><button style={s.btnSm} onClick={() => openModal('editExpense', { id: e.id, client_id: e.client_id, event_id: e.event_id, description: e.description, amount: e.amount, date: e.date, category: e.category, vendor: e.vendor })}>Edit</button><button style={{ ...s.btnSm, color: '#D85A30', borderColor: '#D85A30' }} onClick={() => deleteRecord('expenses', e.id)}>Delete</button></td></tr>)}</tbody>
       </table>
     </div>
   )
@@ -374,7 +384,7 @@ export default function App() {
       <div style={s.overlay} onClick={e => e.target === e.currentTarget && closeModal()}>
         <div style={s.modalBox}>
           <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>
-            {modal === 'addClient' ? 'New client' : modal === 'addEvent' ? 'New event' : modal === 'editEvent' ? 'Edit event' : modal === 'addExpense' ? 'Add expense' : modal === 'addInvoice' || modal === 'editInvoice' ? 'Invoice' : 'Add sponsor payment'}
+            {modal === 'addClient' ? 'New client' : modal === 'addEvent' ? 'New event' : modal === 'editEvent' ? 'Edit event' : modal === 'addExpense' ? 'Add expense' : modal === 'editExpense' ? 'Edit expense' : modal === 'addInvoice' || modal === 'editInvoice' ? 'Invoice' : 'Add sponsor payment'}
           </h2>
 
           {modal === 'addClient' && <>
@@ -397,9 +407,11 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}><input type="checkbox" checked={!!form.commission_waived} onChange={e => setForm({ ...form, commission_waived: e.target.checked })} /><label style={{ fontSize: 13 }}>Commission waived</label></div>
           </>}
 
-          {modal === 'addExpense' && <>
-            <Field label="Client"><select style={s.input} value={form.client_id || ''} onChange={e => setForm({ ...form, client_id: e.target.value, event_id: '' })}>{data.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
-            <Field label="Event"><select style={s.input} value={form.event_id || ''} onChange={e => setForm({ ...form, event_id: e.target.value })}>{clientEvents.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></Field>
+          {modal === 'addExpense' || modal === 'editExpense' ? <>
+            {!form.id && <>
+              <Field label="Client"><select style={s.input} value={form.client_id || ''} onChange={e => setForm({ ...form, client_id: e.target.value, event_id: '' })}>{data.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
+              <Field label="Event"><select style={s.input} value={form.event_id || ''} onChange={e => setForm({ ...form, event_id: e.target.value })}>{clientEvents.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></Field>
+            </>}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label="Amount ($)"><input style={s.input} type="number" value={form.amount || ''} onChange={e => setForm({ ...form, amount: e.target.value })} /></Field>
               <Field label="Date"><input style={s.input} type="date" value={form.date || ''} onChange={e => setForm({ ...form, date: e.target.value })} /></Field>
@@ -409,7 +421,7 @@ export default function App() {
               <Field label="Vendor"><input style={s.input} value={form.vendor || ''} onChange={e => setForm({ ...form, vendor: e.target.value })} /></Field>
             </div>
             <Field label="Description"><input style={s.input} value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} /></Field>
-          </>}
+          </> : null}
 
           {(modal === 'addInvoice' || modal === 'editInvoice') && <>
             {!form.id && <>

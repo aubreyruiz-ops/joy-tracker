@@ -91,6 +91,7 @@ export default function App() {
   const [data, setData] = useState({ clients: [], events: [], expenses: [], invoices: [], sponsors: [] })
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)
+  const [showPending, setShowPending] = useState(false)
   const [clientDetail, setClientDetail] = useState(null)
   const [eventDetail, setEventDetail] = useState(null)
   const [form, setForm] = useState({})
@@ -175,16 +176,48 @@ export default function App() {
   const renderDashboard = () => {
     const totalNet = data.clients.reduce((a, c) => a + cliNet(c.id), 0)
     const totalSpent = data.expenses.reduce((a, e) => a + Number(e.amount), 0)
-    const pendingTotal = data.invoices.filter(i => i.status === 'Pending' && Number(i.amount) > 0).reduce((a, i) => a + Number(i.amount), 0)
+    const pendingInvs = data.invoices.filter(i => i.status === 'Pending' && Number(i.amount) > 0)
+    const pendingTotal = pendingInvs.reduce((a, i) => a + Number(i.amount), 0)
     const extSponsor = data.sponsors.filter(s => !s.joy_contribution).reduce((a, s) => a + Number(s.amount), 0)
     return (
       <div style={content}>
         <div style={metricGrid}>
           <Metric label="Joy's net commission" val={fmt(totalNet)} color={C.purple} />
           <Metric label="Total spent (fronted)" val={fmt(totalSpent)} color={C.red} />
-          <Metric label="Pending invoices" val={fmt(pendingTotal)} color={pendingTotal > 0 ? C.amber : C.ink} />
+          <div onClick={() => setShowPending(v => !v)} style={{ background: C.white, borderRadius: 16, padding: '18px 20px', border: `1.5px solid ${pendingTotal > 0 ? C.amber : C.border}`, cursor: 'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(194,123,0,0.12)'} onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
+            <div style={{ fontSize: 11, color: C.inkFaint, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Pending invoices {pendingTotal > 0 ? '↓' : ''}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: pendingTotal > 0 ? C.amber : C.ink, letterSpacing: '-0.02em' }}>{fmt(pendingTotal)}</div>
+          </div>
           <Metric label="External sponsor income" val={fmt(extSponsor)} color={C.blue} />
         </div>
+        {showPending && pendingTotal > 0 && (
+          <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, overflow: 'hidden', marginBottom: 24 }}>
+            <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>Outstanding invoices</span>
+              <button onClick={() => setShowPending(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.inkFaint, fontSize: 18, lineHeight: 1 }}>×</button>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead><tr>{['Client','Event','Amount','Notes'].map(h => <TH key={h}>{h}</TH>)}</tr></thead>
+              <tbody>
+                {pendingInvs.map(i => (
+                  <tr key={i.id} style={{ cursor: 'pointer' }} onClick={() => { setPage('clients'); setClientDetail(data.clients.find(c => c.id === i.client_id)); setShowPending(false) }}
+                    onMouseEnter={e => e.currentTarget.style.background = C.cream} onMouseLeave={e => e.currentTarget.style.background = ''}>
+                    <TD>{clientName(i.client_id)}</TD>
+                    <TD faint>{eventName(i.event_id)}</TD>
+                    <TD bold color={C.amber}>{fmt(i.amount)}</TD>
+                    <TD faint>{i.notes}</TD>
+                  </tr>
+                ))}
+                <tr style={{ background: C.amberLight }}>
+                  <td colSpan={2} style={{ padding: '12px 16px', fontWeight: 700, color: C.amber }}>Total outstanding</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 700, color: C.amber }}>{fmt(pendingTotal)}</td>
+                  <td style={{ padding: '12px 16px' }} />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
         <SectionHeader title={`Clients (${data.clients.length})`} action={<Btn size="sm" onClick={load}>↻ Refresh</Btn>} />
         <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

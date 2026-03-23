@@ -118,7 +118,7 @@ export default function App() {
   const rate = id => getClient(id).service_rate / 100
 
   const evtSpent = eid => data.expenses.filter(e => e.event_id === eid).reduce((a, e) => a + Number(e.amount), 0)
-  const evtGross = eid => { const ev = getEvent(eid); return ev.commission_waived ? 0 : evtSpent(eid) * rate(ev.client_id) }
+  const evtGross = eid => { const ev = getEvent(eid); if (ev.commission_waived) return 0; if (ev.commission_override != null) return Number(ev.commission_override); return evtSpent(eid) * rate(ev.client_id) }
   const evtJoy = eid => data.sponsors.filter(s => s.event_id === eid && s.joy_contribution).reduce((a, s) => a + Number(s.amount), 0)
   const evtNet = eid => evtGross(eid) - evtJoy(eid)
   const evtAllSp = eid => data.sponsors.filter(s => s.event_id === eid).reduce((a, s) => a + Number(s.amount), 0)
@@ -144,7 +144,7 @@ export default function App() {
     } else if (modal === 'addEvent') {
       await supabase.from('events').insert({ client_id: form.client_id, name: form.name, date: form.date, city: form.city || '', location: form.location || '', commission_waived: !!form.commission_waived })
     } else if (modal === 'editEvent') {
-      await supabase.from('events').update({ name: form.name, commission_waived: !!form.commission_waived }).eq('id', form.id)
+      await supabase.from('events').update({ name: form.name, commission_waived: !!form.commission_waived, commission_override: form.commission_override != null && form.commission_override !== '' ? Number(form.commission_override) : null }).eq('id', form.id)
     } else if (modal === 'addExpense' || modal === 'editExpense') {
       if (form.id) {
         await supabase.from('expenses').update({ description: form.description || '', amount: Number(form.amount) || 0, date: form.date, category: form.category, vendor: form.vendor || '' }).eq('id', form.id)
@@ -301,11 +301,11 @@ export default function App() {
           <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}>{event.name}</span>
           <Tag>{event.date}</Tag><Tag>{event.city}</Tag>
           {event.commission_waived && <Badge type="waived" />}
-          <Btn size="sm" onClick={() => openModal('editEvent', { id: event.id, name: event.name, commission_waived: event.commission_waived })}>Edit</Btn>
+          <Btn size="sm" onClick={() => openModal('editEvent', { id: event.id, name: event.name, commission_waived: event.commission_waived, commission_override: event.commission_override })}>Edit</Btn>
         </div>
         <div style={metricGrid}>
           <Metric label="Spent (fronted)" val={fmt(spent)} color={C.red} />
-          <Metric label={`Gross commission (${event.commission_waived ? 'waived' : Math.round(rate(event.client_id) * 100) + '%'})`} val={fmt(gross)} color={C.inkFaint} />
+          <Metric label={`Gross commission (${event.commission_waived ? 'waived' : event.commission_override != null ? 'fixed' : Math.round(rate(event.client_id) * 100) + '%'})`} val={fmt(gross)} color={C.inkFaint} />
           {jc > 0 ? <Metric label="Joy contribution (deducted)" val={'-' + fmt(jc)} color={C.red} /> : <div />}
           <Metric label="Joy net commission" val={fmt(net)} color={C.purple} />
         </div>
@@ -450,6 +450,7 @@ export default function App() {
               <Field label="Location / venue"><input style={inputSt} value={form.location || ''} onChange={e => setF('location', e.target.value)} /></Field>
             </>}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}><input type="checkbox" checked={!!form.commission_waived} onChange={e => setF('commission_waived', e.target.checked)} /><label style={{ fontSize: 13 }}>Commission waived</label></div>
+            <Field label="Commission override ($) — leave blank to use rate"><input style={inputSt} type="number" value={form.commission_override ?? ''} onChange={e => setF('commission_override', e.target.value === '' ? null : e.target.value)} placeholder="e.g. 14450.16" /></Field>
           </>}
 
           {(modal === 'addExpense' || modal === 'editExpense') && <>

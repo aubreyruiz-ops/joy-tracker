@@ -160,6 +160,8 @@ export default function App() {
       }
     } else if (modal === 'addSponsor') {
       await supabase.from('sponsors').insert({ client_id: form.client_id, event_id: form.event_id, sponsor_name: form.sponsor_name || '', amount: Number(form.amount) || 0, date: form.date, status: form.status, joy_contribution: !!form.joy_contribution, notes: form.notes || '' })
+    } else if (modal === 'editSponsor') {
+      await supabase.from('sponsors').update({ sponsor_name: form.sponsor_name || '', amount: Number(form.amount) || 0, date: form.date, status: form.status, joy_contribution: !!form.joy_contribution, notes: form.notes || '' }).eq('id', form.id)
     }
     closeModal()
     await load()
@@ -374,11 +376,15 @@ export default function App() {
         {(gcio || spons.length > 0) && <>
           <SectionHeader title="Sponsor payments" action={<Btn size="sm" onClick={() => openModal('addSponsor', { client_id: event.client_id, event_id: event.id })}>+ Add</Btn>} />
           <div style={tblStyle}><table style={tStyle}>
-            <thead><tr>{['Date','Sponsor','Amount','Status','Type','Notes'].map(h => <TH key={h}>{h}</TH>)}</tr></thead>
+            <thead><tr>{['Date','Sponsor','Amount','Status','Type','Notes',''].map(h => <TH key={h}>{h}</TH>)}</tr></thead>
             <tbody>{spons.length ? spons.map(sp => <tr key={sp.id} onMouseEnter={ev => ev.currentTarget.style.background = C.cream} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
               <TD faint>{sp.date}</TD><TD bold>{sp.sponsor_name}</TD><TD bold color={sp.joy_contribution ? C.amber : C.blue}>{fmt(sp.amount)}</TD><TD><Badge type={sp.status} /></TD>
               <TD>{sp.joy_contribution ? <Badge type="waived" /> : <span style={{ fontSize: 11, color: C.inkFaint }}>External</span>}</TD><TD faint>{sp.notes}</TD>
-            </tr>) : <tr><td colSpan={6} style={{ padding: 24, textAlign: 'center', color: C.inkFaint }}>No sponsors yet</td></tr>}</tbody>
+              <td style={{ padding: '8px 16px', borderBottom: `1px solid ${C.borderLight}` }}><div style={{ display: 'flex', gap: 6 }}>
+                <Btn size="sm" onClick={() => openModal('editSponsor', { id: sp.id, sponsor_name: sp.sponsor_name, amount: sp.amount, date: sp.date, status: sp.status, joy_contribution: sp.joy_contribution, notes: sp.notes })}>Edit</Btn>
+                <Btn size="sm" danger onClick={() => deleteRecord('sponsors', sp.id)}>Delete</Btn>
+              </div></td>
+            </tr>) : <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: C.inkFaint }}>No sponsors yet</td></tr>}</tbody>
           </table></div>
         </>}
       </div>
@@ -452,10 +458,14 @@ export default function App() {
         </>}
         <SectionHeader title="All sponsor payments" action={<Btn size="sm" onClick={() => openModal('addSponsor', { client_id: data.clients[0]?.id, event_id: data.events[0]?.id })}>+ Add</Btn>} />
         <div style={tblStyle}><table style={tStyle}>
-          <thead><tr>{['Date','Event','Sponsor','Amount','Status','Type','Notes'].map(h => <TH key={h}>{h}</TH>)}</tr></thead>
+          <thead><tr>{['Date','Event','Sponsor','Amount','Status','Type','Notes',''].map(h => <TH key={h}>{h}</TH>)}</tr></thead>
           <tbody>{data.sponsors.map(sp => <tr key={sp.id} onMouseEnter={ev => ev.currentTarget.style.background = C.cream} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
             <TD faint>{sp.date}</TD><TD faint>{eventName(sp.event_id)}</TD><TD bold>{sp.sponsor_name}</TD><TD bold color={sp.joy_contribution ? C.amber : C.blue}>{fmt(sp.amount)}</TD><TD><Badge type={sp.status} /></TD>
             <TD>{sp.joy_contribution ? <Badge type="waived" /> : <span style={{ fontSize: 11, color: C.inkFaint }}>External</span>}</TD><TD faint>{sp.notes}</TD>
+            <td style={{ padding: '8px 16px', borderBottom: `1px solid ${C.borderLight}` }}><div style={{ display: 'flex', gap: 6 }}>
+              <Btn size="sm" onClick={() => openModal('editSponsor', { id: sp.id, sponsor_name: sp.sponsor_name, amount: sp.amount, date: sp.date, status: sp.status, joy_contribution: sp.joy_contribution, notes: sp.notes })}>Edit</Btn>
+              <Btn size="sm" danger onClick={() => deleteRecord('sponsors', sp.id)}>Delete</Btn>
+            </div></td>
           </tr>)}</tbody>
         </table></div>
       </div>
@@ -464,7 +474,7 @@ export default function App() {
 
   const renderModal = () => {
     if (!modal) return null
-    const titles = { addClient: 'New client', addEvent: 'New event', editEvent: 'Edit event', addExpense: 'Add expense', editExpense: 'Edit expense', addInvoice: 'Invoice', editInvoice: 'Invoice', addSponsor: 'Add sponsor payment' }
+    const titles = { addClient: 'New client', addEvent: 'New event', editEvent: 'Edit event', addExpense: 'Add expense', editExpense: 'Edit expense', addInvoice: 'Invoice', editInvoice: 'Invoice', addSponsor: 'Add sponsor payment', editSponsor: 'Edit sponsor payment' }
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(29,29,31,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
         onClick={e => e.target === e.currentTarget && closeModal()}>
@@ -521,9 +531,9 @@ export default function App() {
             <Field label="Notes"><input style={inputSt} value={form.notes || ''} onChange={e => setF('notes', e.target.value)} /></Field>
           </>}
 
-          {modal === 'addSponsor' && <>
-            <Field label="Client"><select style={inputSt} value={form.client_id || ''} onChange={e => setF('client_id', e.target.value)}>{data.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
-            <Field label="Event"><select style={inputSt} value={form.event_id || ''} onChange={e => setF('event_id', e.target.value)}>{clientEvents.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></Field>
+          {(modal === 'addSponsor' || modal === 'editSponsor') && <>
+            {!form.id && <><Field label="Client"><select style={inputSt} value={form.client_id || ''} onChange={e => setF('client_id', e.target.value)}>{data.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
+            <Field label="Event"><select style={inputSt} value={form.event_id || ''} onChange={e => setF('event_id', e.target.value)}>{clientEvents.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></Field></> }
             <Field label="Sponsor name"><input style={inputSt} value={form.sponsor_name || ''} onChange={e => setF('sponsor_name', e.target.value)} /></Field>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label="Amount ($)"><input style={inputSt} type="number" value={form.amount || ''} onChange={e => setF('amount', e.target.value)} /></Field>

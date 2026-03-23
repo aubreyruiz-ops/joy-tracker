@@ -2,6 +2,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
+
+const fmtTime = ts => {
+  if (!ts) return '—'
+  const d = new Date(ts)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
 const fmt = n => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -43,7 +50,6 @@ const C = {
 
 export default function App() {
   const [page, setPage] = useState('dashboard')
-  const [user, setUser] = useState('Alex')
   const [data, setData] = useState({ clients: [], events: [], expenses: [], invoices: [], sponsors: [] })
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)
@@ -104,16 +110,16 @@ export default function App() {
       if (form.id) {
         await supabase.from('expenses').update({ description: form.description || '', amount: Number(form.amount) || 0, date: form.date, category: form.category, vendor: form.vendor || '' }).eq('id', form.id)
       } else {
-        await supabase.from('expenses').insert({ client_id: form.client_id, event_id: form.event_id, description: form.description || '', amount: Number(form.amount) || 0, date: form.date, category: form.category, vendor: form.vendor || '', added_by: user })
+        await supabase.from('expenses').insert({ client_id: form.client_id, event_id: form.event_id, description: form.description || '', amount: Number(form.amount) || 0, date: form.date, category: form.category, vendor: form.vendor || '' })
       }
     } else if (modal === 'addInvoice' || modal === 'editInvoice') {
       if (form.id) {
         await supabase.from('invoices').update({ amount: Number(form.amount), date: form.date, status: form.status, notes: form.notes || '' }).eq('id', form.id)
       } else {
-        await supabase.from('invoices').insert({ client_id: form.client_id, event_id: form.event_id, amount: Number(form.amount) || 0, date: form.date, status: form.status, notes: form.notes || '', added_by: user })
+        await supabase.from('invoices').insert({ client_id: form.client_id, event_id: form.event_id, amount: Number(form.amount) || 0, date: form.date, status: form.status, notes: form.notes || '' })
       }
     } else if (modal === 'addSponsor') {
-      await supabase.from('sponsors').insert({ client_id: form.client_id, event_id: form.event_id, sponsor_name: form.sponsor_name || '', amount: Number(form.amount) || 0, date: form.date, status: form.status, joy_contribution: !!form.joy_contribution, notes: form.notes || '', added_by: user })
+      await supabase.from('sponsors').insert({ client_id: form.client_id, event_id: form.event_id, sponsor_name: form.sponsor_name || '', amount: Number(form.amount) || 0, date: form.date, status: form.status, joy_contribution: !!form.joy_contribution, notes: form.notes || '' })
     }
     closeModal()
     await load()
@@ -366,7 +372,7 @@ export default function App() {
         <div style={{ marginBottom: 28 }}>
           <SectionHeader title="Expenses" action={<Btn size="sm" onClick={() => openModal('addExpense', { client_id: event.client_id, event_id: event.id })}>+ Add</Btn>} />
           <Table
-            headers={['Date', 'Category', 'Vendor', 'Description', 'Amount', 'By', '']}
+            headers={['Date', 'Category', 'Vendor', 'Description', 'Amount', 'Last modified', '']}
             rows={exps.map(e => (
               <tr key={e.id} onMouseEnter={ev => ev.currentTarget.style.background = C.cream} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
                 <TD faint>{e.date}</TD>
@@ -374,7 +380,7 @@ export default function App() {
                 <TD>{e.vendor}</TD>
                 <TD faint>{e.description}</TD>
                 <TD bold color={C.ink}>{fmt(e.amount)}</TD>
-                <TD faint>{e.added_by}</TD>
+                <TD faint>{fmtTime(e.updated_at)}</TD>
                 <td style={{ padding: '8px 16px', borderBottom: `1px solid ${C.borderLight}` }}>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <Btn size="sm" onClick={ev => { ev.stopPropagation(); openModal('editExpense', { id: e.id, client_id: e.client_id, event_id: e.event_id, description: e.description, amount: e.amount, date: e.date, category: e.category, vendor: e.vendor }) }}>Edit</Btn>
@@ -389,14 +395,14 @@ export default function App() {
         <div style={{ marginBottom: 28 }}>
           <SectionHeader title="Invoices sent" action={<Btn size="sm" onClick={() => openModal('addInvoice', { client_id: event.client_id, event_id: event.id })}>+ Add</Btn>} />
           <Table
-            headers={['Date', 'Amount', 'Status', 'Notes', 'By', '']}
+            headers={['Date', 'Amount', 'Status', 'Notes', 'Last modified', '']}
             rows={invs.map(i => (
               <tr key={i.id} onMouseEnter={ev => ev.currentTarget.style.background = C.cream} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
                 <TD faint>{i.date}</TD>
                 <TD bold>{fmt(i.amount)}</TD>
                 <TD><Badge type={i.status} /></TD>
                 <TD faint>{i.notes}</TD>
-                <TD faint>{i.added_by}</TD>
+                <TD faint>{fmtTime(i.updated_at)}</TD>
                 <td style={{ padding: '8px 16px', borderBottom: `1px solid ${C.borderLight}` }}>
                   <Btn size="sm" onClick={() => openModal('editInvoice', { id: i.id, client_id: i.client_id, event_id: i.event_id, amount: i.amount, date: i.date, status: i.status, notes: i.notes })}>Edit</Btn>
                 </td>
@@ -431,7 +437,7 @@ export default function App() {
     <div style={content}>
       <SectionHeader title={`All expenses (${data.expenses.length})`} action={<Btn size="sm" onClick={() => openModal('addExpense', { client_id: data.clients[0]?.id, event_id: data.events[0]?.id })}>+ Add</Btn>} />
       <Table
-        headers={['Date', 'Client', 'Event', 'Category', 'Vendor', 'Amount', 'By', '']}
+        headers={['Date', 'Client', 'Event', 'Category', 'Vendor', 'Amount', 'Last modified', '']}
         rows={data.expenses.map(e => (
           <tr key={e.id} onMouseEnter={ev => ev.currentTarget.style.background = C.cream} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
             <TD faint>{e.date}</TD>
@@ -440,7 +446,7 @@ export default function App() {
             <TD><Tag>{e.category}</Tag></TD>
             <TD>{e.vendor}</TD>
             <TD bold>{fmt(e.amount)}</TD>
-            <TD faint>{e.added_by}</TD>
+            <TD faint>{fmtTime(e.updated_at)}</TD>
             <td style={{ padding: '8px 16px', borderBottom: `1px solid ${C.borderLight}` }}>
               <div style={{ display: 'flex', gap: 6 }}>
                 <Btn size="sm" onClick={() => openModal('editExpense', { id: e.id, client_id: e.client_id, event_id: e.event_id, description: e.description, amount: e.amount, date: e.date, category: e.category, vendor: e.vendor })}>Edit</Btn>
@@ -457,7 +463,7 @@ export default function App() {
     <div style={content}>
       <SectionHeader title={`All invoices (${data.invoices.length})`} action={<Btn size="sm" onClick={() => openModal('addInvoice', { client_id: data.clients[0]?.id, event_id: data.events[0]?.id })}>+ Add</Btn>} />
       <Table
-        headers={['Date', 'Client', 'Event', 'Amount', 'Status', 'Notes', 'By', '']}
+        headers={['Date', 'Client', 'Event', 'Amount', 'Status', 'Notes', 'Last modified', '']}
         rows={data.invoices.map(i => (
           <tr key={i.id} onMouseEnter={ev => ev.currentTarget.style.background = C.cream} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
             <TD faint>{i.date}</TD>
@@ -466,7 +472,7 @@ export default function App() {
             <TD bold>{fmt(i.amount)}</TD>
             <TD><Badge type={i.status} /></TD>
             <TD faint>{i.notes}</TD>
-            <TD faint>{i.added_by}</TD>
+            <TD faint>{fmtTime(i.updated_at)}</TD>
             <td style={{ padding: '8px 16px', borderBottom: `1px solid ${C.borderLight}` }}>
               <Btn size="sm" onClick={() => openModal('editInvoice', { id: i.id, client_id: i.client_id, event_id: i.event_id, amount: i.amount, date: i.date, status: i.status, notes: i.notes })}>Edit</Btn>
             </td>
@@ -636,9 +642,7 @@ export default function App() {
             <span style={{ color: 'white', fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em' }}>Event Tracker</span>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <select style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: 'white', fontFamily: 'inherit' }} value={user} onChange={e => setUser(e.target.value)}>
-              {['Alex', 'Jordan', 'Sam', 'Taylor'].map(u => <option key={u} style={{ color: C.ink, background: C.white }}>{u}</option>)}
-            </select>
+
             <button style={{ fontSize: 12, padding: '6px 16px', borderRadius: 10, border: '1.5px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.15)', color: 'white', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
               onClick={() => openModal('addClient')}>+ Client</button>
           </div>

@@ -168,7 +168,7 @@ const TD = ({ children, bold, faint, color, right, nowrap }) => (
 
 export default function App() {
   const [page, setPage] = useState('dashboard')
-  const [data, setData] = useState({ clients: [], events: [], expenses: [], invoices: [], sponsors: [] })
+  const [data, setData] = useState({ clients: [], events: [], expenses: [], invoices: [], sponsors: [], extraCommissions: [] })
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)
   const [clientDetail, setClientDetail] = useState(null)
@@ -178,14 +178,15 @@ export default function App() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [c, e, ex, i, s] = await Promise.all([
+    const [c, e, ex, i, s, ec] = await Promise.all([
       supabase.from('clients').select('*').order('name'),
       supabase.from('events').select('*').order('date', { ascending: false }),
       supabase.from('expenses').select('*').order('date', { ascending: false }),
       supabase.from('invoices').select('*').order('date', { ascending: false }),
       supabase.from('sponsors').select('*').order('date', { ascending: false }),
+      supabase.from('extra_commissions').select('*').order('date', { ascending: false }),
     ])
-    setData({ clients: c.data||[], events: e.data||[], expenses: ex.data||[], invoices: i.data||[], sponsors: s.data||[] })
+    setData({ clients: c.data||[], events: e.data||[], expenses: ex.data||[], invoices: i.data||[], sponsors: s.data||[], extraCommissions: ec.data||[] })
     setLoading(false)
   }, [])
 
@@ -201,7 +202,8 @@ export default function App() {
   const evtSpent = eid => data.expenses.filter(e => e.event_id === eid).reduce((a,e) => a+Number(e.amount), 0)
   const evtGross = eid => { const ev = ge(eid); if (ev.commission_waived) return 0; if (ev.commission_override != null) return Number(ev.commission_override); return evtSpent(eid) * rate(ev.client_id) }
   const evtJoy = eid => data.sponsors.filter(s => s.event_id === eid && s.joy_contribution).reduce((a,s) => a+Number(s.amount), 0)
-  const evtNet = eid => evtGross(eid) - evtJoy(eid)
+  const evtExtra = eid => data.extraCommissions.filter(ec => ec.event_id === eid).reduce((a,ec) => a+Number(ec.amount), 0)
+  const evtNet = eid => evtGross(eid) - evtJoy(eid) + evtExtra(eid)
   const evtAllSp = eid => data.sponsors.filter(s => s.event_id === eid).reduce((a,s) => a+Number(s.amount), 0)
   const evtSurplus = eid => { const ev = ge(eid); if (!isGcio(ev.client_id)) return null; return evtAllSp(eid) - evtSpent(eid) - evtNet(eid) }
   const cliSpent = cid => data.expenses.filter(e => e.client_id === cid).reduce((a,e) => a+Number(e.amount), 0)
@@ -238,6 +240,11 @@ export default function App() {
       const d = { sponsor_name: form.sponsor_name||'', amount: Number(form.amount)||0, date: form.date, status: form.status, joy_contribution: !!form.joy_contribution, notes: form.notes||'' }
       if (form.id) { await supabase.from('sponsors').update(d).eq('id', form.id) }
       else { await supabase.from('sponsors').insert({ ...d, client_id: form.client_id, event_id: form.event_id }) }
+    }
+    } else if (modal === 'addExtraCommission' || modal === 'editExtraCommission') {
+      const d = { description: form.description||'', amount: Number(form.amount)||0, date: form.date, notes: form.notes||'' }
+      if (form.id) { await supabase.from('extra_commissions').update(d).eq('id', form.id) }
+      else { await supabase.from('extra_commissions').insert({ ...d, client_id: form.client_id, event_id: form.event_id }) }
     }
     closeModal(); await load()
   }
@@ -404,6 +411,7 @@ export default function App() {
     const gcio = client.gcio_style
     const spent = evtSpent(event.id), gross = evtGross(event.id), jc = evtJoy(event.id), net = evtNet(event.id)
     const allSp = evtAllSp(event.id), surplus = evtSurplus(event.id)
+    const extraComms = data.extraCommissions.filter(ec => ec.event_id === event.id)
     const exps = data.expenses.filter(e => e.event_id === event.id)
     const invs = data.invoices.filter(i => i.event_id === event.id)
     const spons = data.sponsors.filter(s => s.event_id === event.id)
@@ -428,7 +436,28 @@ export default function App() {
           <StatCard label="Spent (fronted)" value={fmt(spent)} color={C.red} />
           <StatCard label={`Gross commission (${commLabel})`} value={fmt(gross)} color={C.inkFaint} />
           {jc > 0 ? <StatCard label="Joy contribution (deducted)" value={'-' + fmt(jc)} color={C.red} /> : <div />}
-          <StatCard label="Joy net commission" value={fmt(net)} color={C.purple} />
+          <div style={{ background:C.white, borderRadius:18, padding:'22px 24px', border:`1px solid ${C.border}`, boxShadow:C.shadow }}>
+            <div style={{ fontSize:11, color:C.inkFaint, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>Joy net commission</div>
+            <div style={{ fontSize:26, fontWeight:800, color:C.purple, letterSpacing:'-0.03em', lineHeight:1, marginBottom:12 }}>{fmt(net)}</div>
+            {extraComms.length > 0 && (
+              <div style={{ borderTop:`1px solid ${C.borderLight}`, paddingTop:10, marginBottom:10 }}>
+                {extraComms.map(ec => (
+                  <div key={ec.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', fontSize:12, marginBottom:6 }}>
+                    <div>
+                      <span style={{ color:C.inkMid, fontWeight:600 }}>{ec.description}</span>
+                      {ec.notes && <span style={{ color:C.inkFaint, marginLeft:6 }}>{ec.notes}</span>}
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <span style={{ color:C.green, fontWeight:700 }}>+{fmt(ec.amount)}</span>
+                      <button onClick={() => openModal('editExtraCommission', { id:ec.id, client_id:ec.client_id, event_id:ec.event_id, description:ec.description, amount:ec.amount, date:ec.date, notes:ec.notes })} style={{ background:'none', border:'none', cursor:'pointer', color:C.inkFaint, fontSize:11, fontWeight:600, fontFamily:'inherit', padding:0 }}>edit</button>
+                      <button onClick={() => del('extra_commissions', ec.id)} style={{ background:'none', border:'none', cursor:'pointer', color:C.red, fontSize:11, fontWeight:600, fontFamily:'inherit', padding:0 }}>×</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={() => openModal('addExtraCommission', { client_id:event.client_id, event_id:event.id })} style={{ fontSize:12, color:C.purple, fontWeight:700, background:'none', border:`1.5px dashed ${C.purpleLight}`, borderRadius:8, padding:'5px 12px', cursor:'pointer', fontFamily:'inherit', width:'100%' }}>+ Add commission</button>
+          </div>
         </div>
 
         {gcio && (
@@ -653,7 +682,7 @@ export default function App() {
   // ── Modal ─────────────────────────────────────────────────────────────────────
   const renderModal = () => {
     if (!modal) return null
-    const titles = { addClient:'New client', addEvent:'New event', editEvent:'Edit event', addExpense:'Add expense', editExpense:'Edit expense', addInvoice:'Invoice', editInvoice:'Edit invoice', addSponsor:'Add sponsor', editSponsor:'Edit sponsor' }
+    const titles = { addExtraCommission:'Add commission', editExtraCommission:'Edit commission', addClient:'New client', addEvent:'New event', editEvent:'Edit event', addExpense:'Add expense', editExpense:'Edit expense', addInvoice:'Invoice', editInvoice:'Edit invoice', addSponsor:'Add sponsor', editSponsor:'Edit sponsor' }
     return (
       <div style={{ position:'fixed', inset:0, background:'rgba(17,17,24,0.45)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200 }}
         onClick={e => e.target===e.currentTarget && closeModal()}>
@@ -708,6 +737,15 @@ export default function App() {
               <Field label="Date"><input style={inputSt} type="date" value={form.date||''} onChange={e=>sf('date',e.target.value)} /></Field>
             </div>
             <Field label="Status"><select style={inputSt} value={form.status||'Pending'} onChange={e=>sf('status',e.target.value)}>{['Pending','Paid','Partial'].map(v=><option key={v}>{v}</option>)}</select></Field>
+            <Field label="Notes"><input style={inputSt} value={form.notes||''} onChange={e=>sf('notes',e.target.value)} /></Field>
+          </>}
+
+          {(modal==='addExtraCommission'||modal==='editExtraCommission') && <>
+            <Field label="Description" hint="e.g. Hotel rebate, Venue kickback"><input style={inputSt} value={form.description||''} onChange={e=>sf('description',e.target.value)} autoFocus /></Field>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <Field label="Amount ($)"><input style={inputSt} type="number" value={form.amount||''} onChange={e=>sf('amount',e.target.value)} /></Field>
+              <Field label="Date"><input style={inputSt} type="date" value={form.date||''} onChange={e=>sf('date',e.target.value)} /></Field>
+            </div>
             <Field label="Notes"><input style={inputSt} value={form.notes||''} onChange={e=>sf('notes',e.target.value)} /></Field>
           </>}
 

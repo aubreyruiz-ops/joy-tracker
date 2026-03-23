@@ -148,9 +148,9 @@ export default function App() {
       await supabase.from('events').update({ name: form.name, commission_waived: !!form.commission_waived, commission_override: form.commission_override != null && form.commission_override !== '' ? Number(form.commission_override) : null }).eq('id', form.id)
     } else if (modal === 'addExpense' || modal === 'editExpense') {
       if (form.id) {
-        await supabase.from('expenses').update({ description: form.description || '', amount: Number(form.amount) || 0, date: form.date, category: form.category, vendor: form.vendor || '' }).eq('id', form.id)
+        await supabase.from('expenses').update({ description: form.description || '', amount: Number(form.amount) || 0, date: form.date, category: form.category, vendor: form.vendor || '', receipt_url: form.receipt_url || null }).eq('id', form.id)
       } else {
-        await supabase.from('expenses').insert({ client_id: form.client_id, event_id: form.event_id, description: form.description || '', amount: Number(form.amount) || 0, date: form.date, category: form.category, vendor: form.vendor || '' })
+        await supabase.from('expenses').insert({ client_id: form.client_id, event_id: form.event_id, description: form.description || '', amount: Number(form.amount) || 0, date: form.date, category: form.category, vendor: form.vendor || '', receipt_url: form.receipt_url || null })
       }
     } else if (modal === 'addInvoice' || modal === 'editInvoice') {
       if (form.id) {
@@ -353,7 +353,7 @@ export default function App() {
           <tbody>{exps.length ? exps.map(e => <tr key={e.id} onMouseEnter={ev => ev.currentTarget.style.background = C.cream} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
             <TD faint>{e.date}</TD><TD><Tag>{e.category}</Tag></TD><TD>{e.vendor}</TD><TD faint>{e.description}</TD><TD bold>{fmt(e.amount)}</TD><TD faint>{fmtTime(e.updated_at)}</TD>
             <td style={{ padding: '8px 16px', borderBottom: `1px solid ${C.borderLight}` }}><div style={{ display: 'flex', gap: 6 }}>
-              <Btn size="sm" onClick={ev => { ev.stopPropagation(); openModal('editExpense', { id: e.id, client_id: e.client_id, event_id: e.event_id, description: e.description, amount: e.amount, date: e.date, category: e.category, vendor: e.vendor }) }}>Edit</Btn>
+              <Btn size="sm" onClick={ev => { ev.stopPropagation(); openModal('editExpense', { id: e.id, client_id: e.client_id, event_id: e.event_id, description: e.description, amount: e.amount, date: e.date, category: e.category, vendor: e.vendor, receipt_url: e.receipt_url }) }}>Edit</Btn>
               <Btn size="sm" danger onClick={ev => { ev.stopPropagation(); deleteRecord('expenses', e.id) }}>Delete</Btn>
             </div></td>
           </tr>) : <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: C.inkFaint }}>No expenses yet</td></tr>}</tbody>
@@ -397,11 +397,11 @@ export default function App() {
       <div style={content}>
         <SectionHeader title={`All expenses (${data.expenses.length})`} action={<Btn size="sm" onClick={() => openModal('addExpense', { client_id: data.clients[0]?.id, event_id: data.events[0]?.id })}>+ Add</Btn>} />
         <div style={tblStyle}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead><tr>{['Date','Client','Event','Category','Vendor','Amount','Last modified',''].map(h => <TH key={h}>{h}</TH>)}</tr></thead>
+          <thead><tr>{['Date','Client','Event','Category','Vendor','Amount','Receipt','Last modified',''].map(h => <TH key={h}>{h}</TH>)}</tr></thead>
           <tbody>{data.expenses.map(e => <tr key={e.id} onMouseEnter={ev => ev.currentTarget.style.background = C.cream} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
-            <TD faint>{e.date}</TD><TD>{clientName(e.client_id)}</TD><TD faint>{eventName(e.event_id)}</TD><TD><Tag>{e.category}</Tag></TD><TD>{e.vendor}</TD><TD bold>{fmt(e.amount)}</TD><TD faint>{fmtTime(e.updated_at)}</TD>
+            <TD faint>{e.date}</TD><TD>{clientName(e.client_id)}</TD><TD faint>{eventName(e.event_id)}</TD><TD><Tag>{e.category}</Tag></TD><TD>{e.vendor}</TD><TD bold>{fmt(e.amount)}</TD><TD>{e.receipt_url ? <a href={e.receipt_url} target="_blank" rel="noreferrer" style={{ color: C.purple, fontWeight: 600, fontSize: 12 }}>View</a> : <span style={{ color: C.inkFaint, fontSize: 12 }}>—</span>}</TD><TD faint>{fmtTime(e.updated_at)}</TD>
             <td style={{ padding: '8px 16px', borderBottom: `1px solid ${C.borderLight}` }}><div style={{ display: 'flex', gap: 6 }}>
-              <Btn size="sm" onClick={() => openModal('editExpense', { id: e.id, client_id: e.client_id, event_id: e.event_id, description: e.description, amount: e.amount, date: e.date, category: e.category, vendor: e.vendor })}>Edit</Btn>
+              <Btn size="sm" onClick={() => openModal('editExpense', { id: e.id, client_id: e.client_id, event_id: e.event_id, description: e.description, amount: e.amount, date: e.date, category: e.category, vendor: e.vendor, receipt_url: e.receipt_url })}>Edit</Btn>
               <Btn size="sm" danger onClick={() => deleteRecord('expenses', e.id)}>Delete</Btn>
             </div></td>
           </tr>)}</tbody>
@@ -516,6 +516,7 @@ export default function App() {
               <Field label="Vendor"><input style={inputSt} value={form.vendor || ''} onChange={e => setF('vendor', e.target.value)} /></Field>
             </div>
             <Field label="Description"><input style={inputSt} value={form.description || ''} onChange={e => setF('description', e.target.value)} /></Field>
+            <Field label="Receipt link (optional)"><input style={inputSt} value={form.receipt_url || ''} onChange={e => setF('receipt_url', e.target.value)} placeholder="https://drive.google.com/..." /></Field>
           </>}
 
           {(modal === 'addInvoice' || modal === 'editInvoice') && <>

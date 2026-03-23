@@ -376,7 +376,10 @@ export default function App() {
         <tbody>{data.invoices.map(i => <tr key={i.id} onMouseEnter={ev => ev.currentTarget.style.background = C.cream} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
           <TD faint>{i.date}</TD><TD>{clientName(i.client_id)}</TD><TD faint>{eventName(i.event_id)}</TD><TD bold>{fmt(i.amount)}</TD><TD><Badge type={i.status} /></TD><TD faint>{i.notes}</TD><TD faint>{fmtTime(i.updated_at)}</TD>
           <td style={{ padding: '8px 16px', borderBottom: `1px solid ${C.borderLight}` }}>
-            <Btn size="sm" onClick={() => openModal('editInvoice', { id: i.id, client_id: i.client_id, event_id: i.event_id, amount: i.amount, date: i.date, status: i.status, notes: i.notes })}>Edit</Btn>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Btn size="sm" onClick={() => openModal('editInvoice', { id: i.id, client_id: i.client_id, event_id: i.event_id, amount: i.amount, date: i.date, status: i.status, notes: i.notes })}>Edit</Btn>
+              <Btn size="sm" danger onClick={() => deleteRecord('invoices', i.id)}>Delete</Btn>
+            </div>
           </td>
         </tr>)}</tbody>
       </table></div>

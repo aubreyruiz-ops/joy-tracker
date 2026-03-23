@@ -48,6 +48,15 @@ const C = {
   blueLight: '#E4EFFC',
 }
 
+const inputSt = { width: '100%', fontSize: 13, fontFamily: 'inherit', padding: '9px 12px', border: '1.5px solid #EBEBEB', borderRadius: 10, background: '#FFFFFF', color: '#1D1D1F', boxSizing: 'border-box', outline: 'none' }
+
+const Field = ({ label, children }) => (
+  <div style={{ marginBottom: 14 }}>
+    <label style={{ display: 'block', fontSize: 12, color: '#6B6B6B', marginBottom: 5, fontWeight: 600 }}>{label}</label>
+    {children}
+  </div>
+)
+
 export default function App() {
   const [page, setPage] = useState('dashboard')
   const [data, setData] = useState({ clients: [], events: [], expenses: [], invoices: [], sponsors: [] })
@@ -161,15 +170,6 @@ export default function App() {
     }
     return <button style={{ ...base, ...(danger ? variants.danger : variants[variant]) }} onClick={onClick}>{children}</button>
   }
-
-  const Field = ({ label, children }) => (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{ display: 'block', fontSize: 12, color: C.inkLight, marginBottom: 5, fontWeight: 600 }}>{label}</label>
-      {children}
-    </div>
-  )
-
-  const inputSt = { width: '100%', fontSize: 13, fontFamily: 'inherit', padding: '9px 12px', border: `1.5px solid ${C.border}`, borderRadius: 10, background: C.white, color: C.ink, boxSizing: 'border-box', outline: 'none' }
 
   const SectionHeader = ({ title, action }) => (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>

@@ -205,7 +205,8 @@ export default function App() {
   const evtExtra = eid => data.extraCommissions.filter(ec => ec.event_id === eid).reduce((a,ec) => a+Number(ec.amount), 0)
   const evtNet = eid => evtGross(eid) - evtJoy(eid) + evtExtra(eid)
   const evtAllSp = eid => data.sponsors.filter(s => s.event_id === eid).reduce((a,s) => a+Number(s.amount), 0)
-  const evtSurplus = eid => { const ev = ge(eid); if (!isGcio(ev.client_id)) return null; return evtAllSp(eid) - evtSpent(eid) - evtNet(eid) }
+  const evtGcioNet = eid => evtGross(eid) - evtJoy(eid)
+  const evtSurplus = eid => { const ev = ge(eid); if (!isGcio(ev.client_id)) return null; return evtAllSp(eid) - evtSpent(eid) - evtGcioNet(eid) }
   const cliSpent = cid => data.expenses.filter(e => e.client_id === cid).reduce((a,e) => a+Number(e.amount), 0)
   const cliNet = cid => data.events.filter(e => e.client_id === cid).reduce((a,ev) => a+evtNet(ev.id), 0)
   const cliSurplus = cid => { if (!isGcio(cid)) return null; return data.events.filter(e => e.client_id === cid).reduce((a,ev) => a+(evtSurplus(ev.id)||0), 0) }

@@ -261,7 +261,6 @@ export default function App() {
     const totalSpent = data.expenses.reduce((a,e) => a+Number(e.amount), 0)
     const pendingInvs = data.invoices.filter(i => i.status==='Pending' && Number(i.amount)>0)
     const pendingTotal = pendingInvs.reduce((a,i) => a+Number(i.amount), 0)
-    const extSponsor = data.sponsors.filter(s => !s.joy_contribution).reduce((a,s) => a+Number(s.amount), 0)
     return (
       <div style={wrap}>
         <div style={{ marginBottom: 28 }}>
@@ -274,7 +273,7 @@ export default function App() {
           <StatCard label="Pending invoices" value={fmt(pendingTotal)} color={pendingTotal > 0 ? C.amber : C.ink}
             sub={pendingInvs.length > 0 ? `${pendingInvs.length} invoice${pendingInvs.length > 1 ? 's' : ''} outstanding — click to view` : 'All paid up'}
             onClick={pendingTotal > 0 ? () => setShowPending(v => !v) : null} />
-          <StatCard label="External sponsor income" value={fmt(extSponsor)} color={C.blue} />
+          <StatCard label="Total events" value={data.events.length} sub={`across ${data.clients.length} clients`} />
         </div>
 
         {showPending && pendingTotal > 0 && (

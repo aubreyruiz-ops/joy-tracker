@@ -240,7 +240,6 @@ export default function App() {
       const d = { sponsor_name: form.sponsor_name||'', amount: Number(form.amount)||0, date: form.date, status: form.status, joy_contribution: !!form.joy_contribution, notes: form.notes||'' }
       if (form.id) { await supabase.from('sponsors').update(d).eq('id', form.id) }
       else { await supabase.from('sponsors').insert({ ...d, client_id: form.client_id, event_id: form.event_id }) }
-    }
     } else if (modal === 'addExtraCommission' || modal === 'editExtraCommission') {
       const d = { description: form.description||'', amount: Number(form.amount)||0, date: form.date, notes: form.notes||'' }
       if (form.id) { await supabase.from('extra_commissions').update(d).eq('id', form.id) }

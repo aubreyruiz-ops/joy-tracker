@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 const fmt = n => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -678,6 +678,115 @@ export default function App() {
     )
   }
 
+
+  // ── Calendar ─────────────────────────────────────────────────────────────────
+  const renderCalendar = () => {
+    const now = new Date()
+    const [calYear, setCalYear] = React.useState(now.getFullYear())
+    const [calMonth, setCalMonth] = React.useState(now.getMonth())
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+    const firstDay = new Date(calYear, calMonth, 1).getDay()
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
+    const daysInPrev = new Date(calYear, calMonth, 0).getDate()
+    const eventsThisMonth = data.events.filter(e => { if (!e.date) return false; const d = new Date(e.date + 'T12:00:00'); return d.getFullYear() === calYear && d.getMonth() === calMonth })
+    const getEventsForDay = day => eventsThisMonth.filter(e => new Date(e.date + 'T12:00:00').getDate() === day)
+    const clientColors = ['#330066','#1D4ED8','#059669','#D97706','#DC2626','#7C3AED','#0891B2','#B45309']
+    const clientColor = cid => { const idx = data.clients.findIndex(c => c.id === cid); return clientColors[idx % clientColors.length] }
+    const prevMonth = () => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y-1) } else setCalMonth(m => m-1) }
+    const nextMonth = () => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y+1) } else setCalMonth(m => m+1) }
+    const cells = []
+    for (let i = firstDay - 1; i >= 0; i--) cells.push({ day: daysInPrev - i, current: false })
+    for (let i = 1; i <= daysInMonth; i++) cells.push({ day: i, current: true })
+    const remaining = 42 - cells.length
+    for (let i = 1; i <= remaining; i++) cells.push({ day: i, current: false })
+    const todayStr = now.toISOString().slice(0,10)
+    const isToday = day => { const d = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; return d === todayStr }
+    const upcoming = data.events.filter(e => e.date && e.date >= todayStr).sort((a,b) => a.date.localeCompare(b.date)).slice(0,8)
+
+    return (
+      <div style={wrap}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
+          <div>
+            <h1 style={{ fontSize:24, fontWeight:900, color:C.ink, margin:'0 0 4px', letterSpacing:'-0.04em' }}>Calendar</h1>
+            <p style={{ fontSize:14, color:C.inkLight, margin:0 }}>{eventsThisMonth.length} event{eventsThisMonth.length !== 1 ? 's' : ''} this month</p>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <button onClick={prevMonth} style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:10, width:36, height:36, cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>‹</button>
+            <span style={{ fontSize:17, fontWeight:800, color:C.ink, letterSpacing:'-0.02em', minWidth:200, textAlign:'center' }}>{monthNames[calMonth]} {calYear}</span>
+            <button onClick={nextMonth} style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:10, width:36, height:36, cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>›</button>
+            <button onClick={() => { setCalMonth(now.getMonth()); setCalYear(now.getFullYear()) }}
+              style={{ fontSize:13, padding:'7px 14px', borderRadius:10, border:`1px solid ${C.border}`, background:C.white, color:C.inkMid, cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>Today</button>
+          </div>
+        </div>
+
+        <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:18 }}>
+          {data.clients.map((c,i) => (
+            <div key={c.id} style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <div style={{ width:10, height:10, borderRadius:3, background:clientColors[i % clientColors.length] }} />
+              <span style={{ fontSize:12, color:C.inkMid, fontWeight:500 }}>{c.name}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background:C.white, borderRadius:18, border:`1px solid ${C.border}`, overflow:'hidden', boxShadow:C.shadow, marginBottom:28 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', borderBottom:`1px solid ${C.border}`, background:C.offWhite }}>
+            {dayNames.map(d => <div key={d} style={{ padding:'11px 0', textAlign:'center', fontSize:11, fontWeight:700, color:C.inkFaint, textTransform:'uppercase', letterSpacing:'0.08em' }}>{d}</div>)}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)' }}>
+            {cells.map((cell, idx) => {
+              const dayEvents = cell.current ? getEventsForDay(cell.day) : []
+              const today = isToday(cell.day) && cell.current
+              return (
+                <div key={idx} style={{ minHeight:100, padding:'8px 8px', borderRight:(idx+1)%7!==0?`1px solid ${C.borderLight}`:'none', borderBottom:idx<35?`1px solid ${C.borderLight}`:'none', background:!cell.current?C.offWhite:C.white }}>
+                  <div style={{ fontSize:13, fontWeight:today?800:400, color:today?C.white:!cell.current?C.inkFaint:C.ink, background:today?C.purple:'transparent', width:26, height:26, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:4 }}>{cell.day}</div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                    {dayEvents.slice(0,3).map(ev => (
+                      <div key={ev.id}
+                        onClick={() => { setPage('clients'); setClientDetail(data.clients.find(c => c.id === ev.client_id)); setEventDetail(ev) }}
+                        style={{ fontSize:11, fontWeight:600, color:'white', background:clientColor(ev.client_id), borderRadius:5, padding:'3px 6px', cursor:'pointer', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.4 }}
+                        title={ev.name}>{ev.name}</div>
+                    ))}
+                    {dayEvents.length > 3 && <div style={{ fontSize:10, color:C.inkFaint, paddingLeft:2 }}>+{dayEvents.length-3} more</div>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {upcoming.length > 0 && (
+          <>
+            <SectionTitle>Upcoming events</SectionTitle>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {upcoming.map(ev => {
+                const client = gc(ev.client_id)
+                const daysUntil = Math.ceil((new Date(ev.date+'T12:00:00') - new Date(todayStr+'T12:00:00')) / 86400000)
+                return (
+                  <Card key={ev.id} onClick={() => { setPage('clients'); setClientDetail(client); setEventDetail(ev) }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                      <div style={{ width:4, height:44, borderRadius:4, background:clientColor(ev.client_id), flexShrink:0 }} />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:700, fontSize:14, color:C.ink }}>{ev.name}</div>
+                        <div style={{ fontSize:12, color:C.inkFaint, marginTop:2 }}>{client.name} · {ev.city}</div>
+                      </div>
+                      <div style={{ textAlign:'right', flexShrink:0 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:C.ink }}>{ev.date}</div>
+                        <div style={{ fontSize:11, color:daysUntil<=7?C.amber:C.inkFaint, fontWeight:600, marginTop:2 }}>
+                          {daysUntil===0?'Today':daysUntil===1?'Tomorrow':`In ${daysUntil} days`}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
   // ── Modal ─────────────────────────────────────────────────────────────────────
   const renderModal = () => {
     if (!modal) return null
@@ -773,8 +882,8 @@ export default function App() {
   }
 
   // ── Nav & layout ──────────────────────────────────────────────────────────────
-  const tabs = ['dashboard','clients','expenses','invoices','sponsors']
-  const tabLabels = ['Dashboard','Clients','All expenses','Invoices','Sponsors']
+  const tabs = ['dashboard','clients','expenses','invoices','sponsors','calendar']
+  const tabLabels = ['Dashboard','Clients','All expenses','Invoices','Sponsors','Calendar']
 
   const renderPage = () => {
     if (loading) return <div style={{ textAlign:'center', padding:100, color:C.inkFaint, fontSize:14 }}>Loading your data...</div>
@@ -818,6 +927,7 @@ export default function App() {
         </div>
       )
     }
+    if (page==='calendar') return renderCalendar()
     if (page==='expenses') return renderAllExpenses()
     if (page==='invoices') return renderAllInvoices()
     if (page==='sponsors') return renderAllSponsors()

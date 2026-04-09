@@ -175,6 +175,8 @@ export default function App() {
   const [eventDetail, setEventDetail] = useState(null)
   const [form, setForm] = useState({})
   const [showPending, setShowPending] = useState(false)
+  const [calYear, setCalYear] = useState(new Date().getFullYear())
+  const [calMonth, setCalMonth] = useState(new Date().getMonth())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -682,8 +684,6 @@ export default function App() {
   // ── Calendar ─────────────────────────────────────────────────────────────────
   const renderCalendar = () => {
     const now = new Date()
-    const [calYear, setCalYear] = React.useState(now.getFullYear())
-    const [calMonth, setCalMonth] = React.useState(now.getMonth())
     const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
     const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
     const firstDay = new Date(calYear, calMonth, 1).getDay()

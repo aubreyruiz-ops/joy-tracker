@@ -230,7 +230,7 @@ export default function App() {
     } else if (modal === 'addEvent') {
       await supabase.from('events').insert({ client_id: form.client_id, name: form.name, date: form.date, city: form.city||'', location: form.location||'', commission_waived: !!form.commission_waived })
     } else if (modal === 'editEvent') {
-      await supabase.from('events').update({ name: form.name, commission_waived: !!form.commission_waived, commission_override: form.commission_override!=null&&form.commission_override!=='' ? Number(form.commission_override) : null }).eq('id', form.id)
+      await supabase.from('events').update({ name: form.name, date: form.date, city: form.city||'', location: form.location||'', commission_waived: !!form.commission_waived, commission_override: form.commission_override!=null&&form.commission_override!=='' ? Number(form.commission_override) : null }).eq('id', form.id)
     } else if (modal === 'addExpense' || modal === 'editExpense') {
       const d = { description: form.description||'', amount: Number(form.amount)||0, date: form.date, category: form.category, vendor: form.vendor||'', receipt_url: form.receipt_url||null }
       if (form.id) { await supabase.from('expenses').update(d).eq('id', form.id) }
@@ -430,7 +430,7 @@ export default function App() {
               {event.commission_waived && <Pill bg={C.borderLight} color={C.inkLight}>commission waived</Pill>}
             </div>
           </div>
-          <Btn size="sm" onClick={() => openModal('editEvent', { id: event.id, name: event.name, commission_waived: event.commission_waived, commission_override: event.commission_override })}>Edit event</Btn>
+          <Btn size="sm" onClick={() => openModal('editEvent', { id: event.id, name: event.name, date: event.date, city: event.city, location: event.location, commission_waived: event.commission_waived, commission_override: event.commission_override })}>Edit event</Btn>
         </div>
 
         <div style={grid4}>
@@ -807,15 +807,21 @@ export default function App() {
           {(modal==='addEvent'||modal==='editEvent') && <>
             {modal==='addEvent' && <Field label="Client"><select style={inputSt} value={form.client_id||''} onChange={e=>sf('client_id',e.target.value)}>{data.clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>}
             <Field label="Event name"><input style={inputSt} value={form.name||''} onChange={e=>sf('name',e.target.value)} autoFocus /></Field>
-            {modal==='addEvent' && <>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                <Field label="Date"><input style={inputSt} type="date" value={form.date||''} onChange={e=>sf('date',e.target.value)} /></Field>
-                <Field label="City"><input style={inputSt} value={form.city||''} onChange={e=>sf('city',e.target.value)} /></Field>
-              </div>
-              <Field label="Location / venue"><input style={inputSt} value={form.location||''} onChange={e=>sf('location',e.target.value)} /></Field>
-            </>}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <Field label="Date"><input style={inputSt} type="date" value={form.date||''} onChange={e=>sf('date',e.target.value)} /></Field>
+              <Field label="City"><input style={inputSt} value={form.city||''} onChange={e=>sf('city',e.target.value)} /></Field>
+            </div>
+            <Field label="Location / venue"><input style={inputSt} value={form.location||''} onChange={e=>sf('location',e.target.value)} /></Field>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}><input type="checkbox" checked={!!form.commission_waived} onChange={e=>sf('commission_waived',e.target.checked)} /><label style={{ fontSize:14 }}>Commission waived</label></div>
             <Field label="Commission override ($)" hint="Leave blank to use the rate automatically"><input style={inputSt} type="number" value={form.commission_override??''} onChange={e=>sf('commission_override',e.target.value===''?null:e.target.value)} placeholder="e.g. 14450.16" /></Field>
+            {modal==='editEvent' && (
+              <div style={{ marginTop:8, paddingTop:16, borderTop:`1px solid ${C.border}` }}>
+                <button onClick={async () => { if (!confirm('Delete this event? All expenses, invoices and sponsors for this event will also be deleted.')) return; closeModal(); await supabase.from('events').delete().eq('id', form.id); await load() }}
+                  style={{ fontSize:13, color:C.red, background:C.redLight, border:'none', borderRadius:10, padding:'8px 16px', cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>
+                  Delete this event
+                </button>
+              </div>
+            )}
           </>}
 
           {(modal==='addExpense'||modal==='editExpense') && <>

@@ -852,6 +852,7 @@ export default function App() {
             </div>
             <Field label="Status"><select style={inputSt} value={form.status||'Pending'} onChange={e=>sf('status',e.target.value)}>{['Pending','Paid','Partial'].map(v=><option key={v}>{v}</option>)}</select></Field>
             <Field label="Notes"><input style={inputSt} value={form.notes||''} onChange={e=>sf('notes',e.target.value)} /></Field>
+            <Field label="Invoice link (optional)" hint="Paste a link to the invoice document"><input style={inputSt} value={form.invoice_url||''} onChange={e=>sf('invoice_url',e.target.value)} placeholder="https://drive.google.com/..." /></Field>
           </>}
 
           {(modal==='addExtraCommission'||modal==='editExtraCommission') && <>
@@ -861,7 +862,6 @@ export default function App() {
               <Field label="Date"><input style={inputSt} type="date" value={form.date||''} onChange={e=>sf('date',e.target.value)} /></Field>
             </div>
             <Field label="Notes"><input style={inputSt} value={form.notes||''} onChange={e=>sf('notes',e.target.value)} /></Field>
-            <Field label="Invoice link (optional)" hint="Paste a link to the invoice document"><input style={inputSt} value={form.invoice_url||''} onChange={e=>sf('invoice_url',e.target.value)} placeholder="https://drive.google.com/..." /></Field>
           </>}
 
           {(modal==='addSponsor'||modal==='editSponsor') && <>

@@ -236,11 +236,11 @@ export default function App() {
       if (form.id) { await supabase.from('expenses').update(d).eq('id', form.id) }
       else { await supabase.from('expenses').insert({ ...d, client_id: form.client_id, event_id: form.event_id }) }
     } else if (modal === 'addInvoice' || modal === 'editInvoice') {
-      const d = { amount: Number(form.amount)||0, date: form.date, status: form.status, notes: form.notes||'' }
+      const d = { amount: Number(form.amount)||0, date: form.date, status: form.status, notes: form.notes||'', invoice_url: form.invoice_url||null }
       if (form.id) { await supabase.from('invoices').update(d).eq('id', form.id) }
       else { await supabase.from('invoices').insert({ ...d, client_id: form.client_id, event_id: form.event_id }) }
     } else if (modal === 'addSponsor' || modal === 'editSponsor') {
-      const d = { sponsor_name: form.sponsor_name||'', amount: Number(form.amount)||0, date: form.date, status: form.status, joy_contribution: !!form.joy_contribution, notes: form.notes||'' }
+      const d = { sponsor_name: form.sponsor_name||'', amount: Number(form.amount)||0, date: form.date, status: form.status, joy_contribution: !!form.joy_contribution, notes: form.notes||'', payment_url: form.payment_url||null }
       if (form.id) { await supabase.from('sponsors').update(d).eq('id', form.id) }
       else { await supabase.from('sponsors').insert({ ...d, client_id: form.client_id, event_id: form.event_id }) }
     } else if (modal === 'addExtraCommission' || modal === 'editExtraCommission') {
@@ -506,7 +506,7 @@ export default function App() {
         </SectionTitle>
         <div style={{ marginBottom: 32 }}>
           <DataTable
-            headers={['Date', 'Amount', 'Status', 'Notes', 'Modified', '']}
+            headers={['Date', 'Amount', 'Status', 'Notes', 'Link', 'Modified', '']}
             rows={invs.map(i => (
               <tr key={i.id} onMouseEnter={ev => ev.currentTarget.style.background = C.offWhite} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
                 <TD faint nowrap>{i.date}</TD>
@@ -516,7 +516,7 @@ export default function App() {
                 <TD faint nowrap>{fmtTime(i.updated_at)}</TD>
                 <td style={{ padding: '8px 18px', borderBottom: `1px solid ${C.borderLight}`, whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <Btn size="sm" onClick={() => openModal('editInvoice', { id: i.id, amount: i.amount, date: i.date, status: i.status, notes: i.notes })}>Edit</Btn>
+                    <Btn size="sm" onClick={() => openModal('editInvoice', { id: i.id, amount: i.amount, date: i.date, status: i.status, notes: i.notes, invoice_url: i.invoice_url })}>Edit</Btn>
                     <Btn size="sm" danger onClick={() => del('invoices', i.id)}>Delete</Btn>
                   </div>
                 </td>
@@ -532,7 +532,7 @@ export default function App() {
               Sponsor payments
             </SectionTitle>
             <DataTable
-              headers={['Date', 'Sponsor', 'Amount', 'Status', 'Type', 'Notes', '']}
+              headers={['Date', 'Sponsor', 'Amount', 'Status', 'Type', 'Notes', 'Link', '']}
               rows={spons.map(sp => (
                 <tr key={sp.id} onMouseEnter={ev => ev.currentTarget.style.background = C.offWhite} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
                   <TD faint nowrap>{sp.date}</TD>
@@ -543,7 +543,7 @@ export default function App() {
                   <TD faint>{sp.notes}</TD>
                   <td style={{ padding: '8px 18px', borderBottom: `1px solid ${C.borderLight}`, whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <Btn size="sm" onClick={() => openModal('editSponsor', { id: sp.id, sponsor_name: sp.sponsor_name, amount: sp.amount, date: sp.date, status: sp.status, joy_contribution: sp.joy_contribution, notes: sp.notes })}>Edit</Btn>
+                      <Btn size="sm" onClick={() => openModal('editSponsor', { id: sp.id, sponsor_name: sp.sponsor_name, amount: sp.amount, date: sp.date, status: sp.status, joy_contribution: sp.joy_contribution, notes: sp.notes, payment_url: sp.payment_url })}>Edit</Btn>
                       <Btn size="sm" danger onClick={() => del('sponsors', sp.id)}>Delete</Btn>
                     </div>
                   </td>
@@ -593,7 +593,7 @@ export default function App() {
         All invoices ({data.invoices.length})
       </SectionTitle>
       <DataTable
-        headers={['Date', 'Client', 'Event', 'Amount', 'Status', 'Notes', 'Modified', '']}
+        headers={['Date', 'Client', 'Event', 'Amount', 'Status', 'Notes', 'Link', 'Modified', '']}
         rows={data.invoices.map(i => (
           <tr key={i.id} onMouseEnter={ev => ev.currentTarget.style.background = C.offWhite} onMouseLeave={ev => ev.currentTarget.style.background = ''}>
             <TD faint nowrap>{i.date}</TD>
@@ -605,7 +605,7 @@ export default function App() {
             <TD faint nowrap>{fmtTime(i.updated_at)}</TD>
             <td style={{ padding: '8px 18px', borderBottom: `1px solid ${C.borderLight}`, whiteSpace: 'nowrap' }}>
               <div style={{ display: 'flex', gap: 6 }}>
-                <Btn size="sm" onClick={() => openModal('editInvoice', { id: i.id, amount: i.amount, date: i.date, status: i.status, notes: i.notes })}>Edit</Btn>
+                <Btn size="sm" onClick={() => openModal('editInvoice', { id: i.id, amount: i.amount, date: i.date, status: i.status, notes: i.notes, invoice_url: i.invoice_url })}>Edit</Btn>
                 <Btn size="sm" danger onClick={() => del('invoices', i.id)}>Delete</Btn>
               </div>
             </td>
@@ -657,7 +657,7 @@ export default function App() {
           All sponsor payments
         </SectionTitle>
         <DataTable
-          headers={['Date', 'Event', 'Sponsor', 'Amount', 'Status', 'Type', 'Notes', '']}
+          headers={['Date', 'Event', 'Sponsor', 'Amount', 'Status', 'Type', 'Notes', 'Link', '']}
           rows={data.sponsors.map(sp => (
             <tr key={sp.id} onMouseEnter={e => e.currentTarget.style.background = C.offWhite} onMouseLeave={e => e.currentTarget.style.background = ''}>
               <TD faint nowrap>{sp.date}</TD>
@@ -669,7 +669,7 @@ export default function App() {
               <TD faint>{sp.notes}</TD>
               <td style={{ padding: '8px 18px', borderBottom: `1px solid ${C.borderLight}`, whiteSpace: 'nowrap' }}>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <Btn size="sm" onClick={() => openModal('editSponsor', { id: sp.id, sponsor_name: sp.sponsor_name, amount: sp.amount, date: sp.date, status: sp.status, joy_contribution: sp.joy_contribution, notes: sp.notes })}>Edit</Btn>
+                  <Btn size="sm" onClick={() => openModal('editSponsor', { id: sp.id, sponsor_name: sp.sponsor_name, amount: sp.amount, date: sp.date, status: sp.status, joy_contribution: sp.joy_contribution, notes: sp.notes, payment_url: sp.payment_url })}>Edit</Btn>
                   <Btn size="sm" danger onClick={() => del('sponsors', sp.id)}>Delete</Btn>
                 </div>
               </td>
@@ -861,6 +861,7 @@ export default function App() {
               <Field label="Date"><input style={inputSt} type="date" value={form.date||''} onChange={e=>sf('date',e.target.value)} /></Field>
             </div>
             <Field label="Notes"><input style={inputSt} value={form.notes||''} onChange={e=>sf('notes',e.target.value)} /></Field>
+            <Field label="Invoice link (optional)" hint="Paste a link to the invoice document"><input style={inputSt} value={form.invoice_url||''} onChange={e=>sf('invoice_url',e.target.value)} placeholder="https://drive.google.com/..." /></Field>
           </>}
 
           {(modal==='addSponsor'||modal==='editSponsor') && <>
@@ -876,6 +877,7 @@ export default function App() {
             <Field label="Status"><select style={inputSt} value={form.status||'Paid'} onChange={e=>sf('status',e.target.value)}>{['Paid','Pending'].map(v=><option key={v}>{v}</option>)}</select></Field>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}><input type="checkbox" checked={!!form.joy_contribution} onChange={e=>sf('joy_contribution',e.target.checked)} /><label style={{ fontSize:14 }}>Joy's own contribution (deducted from commission)</label></div>
             <Field label="Notes"><input style={inputSt} value={form.notes||''} onChange={e=>sf('notes',e.target.value)} /></Field>
+            <Field label="Payment link (optional)" hint="Paste a link to the payment confirmation"><input style={inputSt} value={form.payment_url||''} onChange={e=>sf('payment_url',e.target.value)} placeholder="https://drive.google.com/..." /></Field>
           </>}
 
           <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:24, paddingTop:16, borderTop:`1px solid ${C.border}` }}>

@@ -513,6 +513,7 @@ export default function App() {
                 <TD bold>{fmt(i.amount)}</TD>
                 <TD><StatusPill status={i.status} /></TD>
                 <TD faint>{i.notes}</TD>
+                <TD>{i.invoice_url ? <a href={i.invoice_url} target="_blank" rel="noreferrer" style={{ color:C.purple, fontWeight:700, fontSize:12, textDecoration:'none' }}>View ↗</a> : <span style={{ color:C.inkFaint }}>—</span>}</TD>
                 <TD faint nowrap>{fmtTime(i.updated_at)}</TD>
                 <td style={{ padding: '8px 18px', borderBottom: `1px solid ${C.borderLight}`, whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -541,6 +542,7 @@ export default function App() {
                   <TD><StatusPill status={sp.status} /></TD>
                   <TD>{sp.joy_contribution ? <Pill bg={C.amberLight} color={C.amber}>Joy contrib</Pill> : <span style={{ color: C.inkFaint, fontSize: 12 }}>External</span>}</TD>
                   <TD faint>{sp.notes}</TD>
+                  <TD>{sp.payment_url ? <a href={sp.payment_url} target="_blank" rel="noreferrer" style={{ color:C.purple, fontWeight:700, fontSize:12, textDecoration:'none' }}>View ↗</a> : <span style={{ color:C.inkFaint }}>—</span>}</TD>
                   <td style={{ padding: '8px 18px', borderBottom: `1px solid ${C.borderLight}`, whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <Btn size="sm" onClick={() => openModal('editSponsor', { id: sp.id, sponsor_name: sp.sponsor_name, amount: sp.amount, date: sp.date, status: sp.status, joy_contribution: sp.joy_contribution, notes: sp.notes, payment_url: sp.payment_url })}>Edit</Btn>
@@ -602,6 +604,7 @@ export default function App() {
             <TD bold>{fmt(i.amount)}</TD>
             <TD><StatusPill status={i.status} /></TD>
             <TD faint>{i.notes}</TD>
+            <TD>{i.invoice_url ? <a href={i.invoice_url} target="_blank" rel="noreferrer" style={{ color:C.purple, fontWeight:700, fontSize:12, textDecoration:'none' }}>View ↗</a> : <span style={{ color:C.inkFaint }}>—</span>}</TD>
             <TD faint nowrap>{fmtTime(i.updated_at)}</TD>
             <td style={{ padding: '8px 18px', borderBottom: `1px solid ${C.borderLight}`, whiteSpace: 'nowrap' }}>
               <div style={{ display: 'flex', gap: 6 }}>
@@ -667,6 +670,7 @@ export default function App() {
               <TD><StatusPill status={sp.status} /></TD>
               <TD>{sp.joy_contribution ? <Pill bg={C.amberLight} color={C.amber}>Joy contrib</Pill> : <span style={{ color: C.inkFaint, fontSize: 12 }}>External</span>}</TD>
               <TD faint>{sp.notes}</TD>
+              <TD>{sp.payment_url ? <a href={sp.payment_url} target="_blank" rel="noreferrer" style={{ color:C.purple, fontWeight:700, fontSize:12, textDecoration:'none' }}>View ↗</a> : <span style={{ color:C.inkFaint }}>—</span>}</TD>
               <td style={{ padding: '8px 18px', borderBottom: `1px solid ${C.borderLight}`, whiteSpace: 'nowrap' }}>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <Btn size="sm" onClick={() => openModal('editSponsor', { id: sp.id, sponsor_name: sp.sponsor_name, amount: sp.amount, date: sp.date, status: sp.status, joy_contribution: sp.joy_contribution, notes: sp.notes, payment_url: sp.payment_url })}>Edit</Btn>

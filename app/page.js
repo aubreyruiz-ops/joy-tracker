@@ -175,6 +175,7 @@ export default function App() {
   const [eventDetail, setEventDetail] = useState(null)
   const [form, setForm] = useState({})
   const [showPending, setShowPending] = useState(false)
+  const [showPendingSponsors, setShowPendingSponsors] = useState(false)
   const [calYear, setCalYear] = useState(new Date().getFullYear())
   const [calMonth, setCalMonth] = useState(new Date().getMonth())
 
@@ -263,6 +264,8 @@ export default function App() {
     const totalSpent = data.expenses.reduce((a,e) => a+Number(e.amount), 0)
     const pendingInvs = data.invoices.filter(i => i.status==='Pending' && Number(i.amount)>0)
     const pendingTotal = pendingInvs.reduce((a,i) => a+Number(i.amount), 0)
+    const pendingSps = data.sponsors.filter(s => s.status==='Pending' && !s.joy_contribution && Number(s.amount)>0)
+    const pendingSpTotal = pendingSps.reduce((a,s) => a+Number(s.amount), 0)
     return (
       <div style={wrap}>
         <div style={{ marginBottom: 28 }}>
@@ -275,8 +278,41 @@ export default function App() {
           <StatCard label="Pending invoices" value={fmt(pendingTotal)} color={pendingTotal > 0 ? C.amber : C.ink}
             sub={pendingInvs.length > 0 ? `${pendingInvs.length} invoice${pendingInvs.length > 1 ? 's' : ''} outstanding — click to view` : 'All paid up'}
             onClick={pendingTotal > 0 ? () => setShowPending(v => !v) : null} />
-          <StatCard label="Total events" value={data.events.length} sub={`across ${data.clients.length} clients`} />
+          <StatCard label="Pending sponsor payments" value={fmt(pendingSpTotal)} color={pendingSpTotal > 0 ? C.blue : C.ink}
+            sub={pendingSps.length > 0 ? `${pendingSps.length} payment${pendingSps.length > 1 ? 's' : ''} outstanding — click to view` : 'All received'}
+            onClick={pendingSpTotal > 0 ? () => setShowPendingSponsors(v => !v) : null} />
         </div>
+
+        {showPendingSponsors && pendingSpTotal > 0 && (
+          <Card noPad style={{ marginBottom: 28, border: `1.5px solid ${C.blueLight}` }}>
+            <div style={{ padding: '16px 24px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 800, fontSize: 15, color: C.blue }}>Pending sponsor payments</span>
+              <button onClick={() => setShowPendingSponsors(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.inkFaint, fontSize: 20, lineHeight: 1, padding: 0 }}>×</button>
+            </div>
+            <DataTable
+              headers={['Client', 'Event', 'Sponsor', 'Amount', 'Notes']}
+              rows={[
+                ...pendingSps.map(s => (
+                  <tr key={s.id} style={{ cursor: 'pointer' }}
+                    onClick={() => { setPage('clients'); setClientDetail(data.clients.find(c => c.id === s.client_id)); setShowPendingSponsors(false) }}
+                    onMouseEnter={e => e.currentTarget.style.background = C.offWhite}
+                    onMouseLeave={e => e.currentTarget.style.background = ''}>
+                    <TD>{cName(s.client_id)}</TD>
+                    <TD faint>{eName(s.event_id)}</TD>
+                    <TD bold>{s.sponsor_name}</TD>
+                    <TD bold color={C.blue}>{fmt(s.amount)}</TD>
+                    <TD faint>{s.notes}</TD>
+                  </tr>
+                )),
+                <tr key="total" style={{ background: C.blueLight }}>
+                  <td colSpan={3} style={{ padding: '12px 18px', fontWeight: 800, color: C.blue, fontSize: 13 }}>Total pending</td>
+                  <td style={{ padding: '12px 18px', fontWeight: 800, color: C.blue, fontSize: 13 }}>{fmt(pendingSpTotal)}</td>
+                  <td style={{ padding: '12px 18px' }} />
+                </tr>
+              ]}
+            />
+          </Card>
+        )}
 
         {showPending && pendingTotal > 0 && (
           <Card noPad style={{ marginBottom: 28, border: `1.5px solid ${C.amberLight}` }}>

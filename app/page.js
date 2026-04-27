@@ -294,7 +294,7 @@ export default function App() {
               rows={[
                 ...pendingSps.map(s => (
                   <tr key={s.id} style={{ cursor: 'pointer' }}
-                    onClick={() => { setPage('clients'); setClientDetail(data.clients.find(c => c.id === s.client_id)); setShowPendingSponsors(false) }}
+                    onClick={() => { const client = data.clients.find(c => c.id === s.client_id); const event = data.events.find(e => e.id === s.event_id); setPage('clients'); setClientDetail(client); setEventDetail(event); setShowPendingSponsors(false) }}
                     onMouseEnter={e => e.currentTarget.style.background = C.offWhite}
                     onMouseLeave={e => e.currentTarget.style.background = ''}>
                     <TD>{cName(s.client_id)}</TD>
@@ -325,7 +325,7 @@ export default function App() {
               rows={[
                 ...pendingInvs.map(i => (
                   <tr key={i.id} style={{ cursor: 'pointer' }}
-                    onClick={() => { setPage('clients'); setClientDetail(data.clients.find(c => c.id === i.client_id)); setShowPending(false) }}
+                    onClick={() => { const client = data.clients.find(c => c.id === i.client_id); const event = data.events.find(e => e.id === i.event_id); setPage('clients'); setClientDetail(client); setEventDetail(event); setShowPending(false) }}
                     onMouseEnter={e => e.currentTarget.style.background = C.offWhite}
                     onMouseLeave={e => e.currentTarget.style.background = ''}>
                     <TD>{cName(i.client_id)}</TD>

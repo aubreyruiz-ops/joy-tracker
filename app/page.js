@@ -466,7 +466,10 @@ export default function App() {
               {event.commission_waived && <Pill bg={C.borderLight} color={C.inkLight}>commission waived</Pill>}
             </div>
           </div>
-          <Btn size="sm" onClick={() => openModal('editEvent', { id: event.id, name: event.name, date: event.date, city: event.city, location: event.location, commission_waived: event.commission_waived, commission_override: event.commission_override })}>Edit event</Btn>
+          <div style={{ display:'flex', gap:8 }}>
+            <Btn size="sm" onClick={() => exportEventPDF(event)}>⬇ Export</Btn>
+            <Btn size="sm" onClick={() => openModal('editEvent', { id: event.id, name: event.name, date: event.date, city: event.city, location: event.location, commission_waived: event.commission_waived, commission_override: event.commission_override })}>Edit event</Btn>
+          </div>
         </div>
 
         <div style={grid4}>

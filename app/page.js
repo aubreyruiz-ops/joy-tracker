@@ -258,6 +258,53 @@ export default function App() {
   const wrap = { padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }
   const grid4 = { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 28 }
 
+  const exportEventPDF = (event) => {
+    const client = gc(event.client_id)
+    const exps = data.expenses.filter(e => e.event_id === event.id)
+    const invs = data.invoices.filter(i => i.event_id === event.id)
+    const spons = data.sponsors.filter(s => s.event_id === event.id)
+    const spent = evtSpent(event.id), gross = evtGross(event.id), jc = evtJoy(event.id), net = evtNet(event.id)
+    const extra = data.extraCommissions.filter(ec => ec.event_id === event.id)
+    const gcio = client.gcio_style, allSp = evtAllSp(event.id), surplus = evtSurplus(event.id)
+    const totalNet = net + extra.reduce((a,e)=>a+Number(e.amount),0)
+    const f = n => '$' + Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})
+    const th = cells => cells.map(c=>`<th style="padding:8px 12px;text-align:left;background:#f9f9fb;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#888;border-bottom:1px solid #e8e6e0;">${c}</th>`).join('')
+    const td = cells => cells.map(c=>`<td style="padding:9px 12px;border-bottom:1px solid #f0ede8;font-size:13px;">${c}</td>`).join('')
+    const tbl = (headers, rows, foot) => `<table style="width:100%;border-collapse:collapse;border:1px solid #e8e6e0;border-radius:10px;overflow:hidden;margin-bottom:28px;"><thead><tr>${th(headers)}</tr></thead><tbody>${rows}${foot||''}</tbody></table>`
+    const stat = (label, value, color) => `<div style="background:#f9f9fb;border-radius:10px;padding:14px 16px;border:1px solid #e8e6e0;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#aaa;margin-bottom:6px;">${label}</div><div style="font-size:20px;font-weight:800;color:${color||'#111118'};">${value}</div></div>`
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${event.name}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111118;background:white;padding:40px;max-width:960px;margin:0 auto;}@media print{.no-print{display:none;}}</style>
+    </head><body>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;padding-bottom:20px;border-bottom:3px solid #330066;">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#330066;font-weight:700;margin-bottom:8px;">Joy Life — Event Summary</div>
+        <h1 style="font-size:26px;font-weight:900;letter-spacing:-0.03em;margin-bottom:8px;">${event.name}</h1>
+        <div style="font-size:14px;color:#666;">${event.date} &nbsp;·&nbsp; ${event.city} &nbsp;·&nbsp; ${event.location||''}</div>
+        <div style="font-size:13px;color:#888;margin-top:4px;">Client: <strong>${client.name}</strong> &nbsp;·&nbsp; ${client.service_rate}% commission</div>
+      </div>
+      <button class="no-print" onclick="window.print()" style="font-size:13px;padding:10px 20px;background:#330066;color:white;border:none;border-radius:10px;cursor:pointer;font-weight:700;">Print / Save PDF</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(${jc>0?4:3},1fr);gap:12px;margin-bottom:28px;">
+      ${stat('Spent (fronted)',f(spent),'#DC2626')}
+      ${jc>0?stat('Joy contribution','-'+f(jc),'#DC2626'):''}
+      ${stat('Joy net commission',f(totalNet),'#330066')}
+      ${gcio?stat('All sponsor income',f(allSp),'#1D4ED8'):''}
+      ${gcio?stat('Surplus to '+client.name,f(surplus||0),(surplus||0)>=0?'#059669':'#DC2626'):''}
+    </div>
+    ${extra.length>0?`<h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Additional commission</h3>${tbl(['Description','Amount','Notes'],extra.map(e=>`<tr>${td([e.description,f(e.amount),e.notes||''])}</tr>`).join(''))}` :''}
+    <h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Expenses</h3>
+    ${tbl(['Date','Category','Vendor','Description','Amount'],exps.map(e=>`<tr>${td([e.date,e.category,e.vendor,e.description,f(e.amount)])}</tr>`).join(''),`<tr><td colspan="4" style="padding:9px 12px;font-weight:700;">Total</td><td style="padding:9px 12px;font-weight:700;">${f(spent)}</td></tr>`)}
+    <h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Invoices sent</h3>
+    ${tbl(['Date','Amount','Status','Notes'],invs.map(i=>`<tr>${td([i.date,f(i.amount),i.status,i.notes||''])}</tr>`).join(''))}
+    ${spons.length>0?`<h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Sponsor payments</h3>${tbl(['Date','Sponsor','Amount','Status','Type','Notes'],spons.map(s=>`<tr>${td([s.date,s.sponsor_name,f(s.amount),s.status,s.joy_contribution?'Joy contribution':'External',s.notes||''])}</tr>`).join(''))}` :''}
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e8e6e0;font-size:11px;color:#aaa;text-align:center;">Generated by Joy Life Event Tracker · ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+    </body></html>`
+    const win = window.open('','_blank')
+    if (!win) { alert('Please allow popups for this site to use the export feature.'); return }
+    win.document.write(html)
+    win.document.close()
+  }
+
   // ── Dashboard ───────────────────────────────────────────────────────────────
   const renderDashboard = () => {
     const totalNet = data.clients.reduce((a,c) => a+cliNet(c.id), 0)
@@ -396,10 +443,18 @@ export default function App() {
     return (
       <div style={wrap}>
         <BackLink label="All clients" onClick={() => setClientDetail(null)} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
-          <h1 style={{ fontSize: 26, fontWeight: 900, color: C.ink, margin: 0, letterSpacing: '-0.04em' }}>{client.name}</h1>
-          <Pill bg={C.purpleLight} color={C.purpleMid}>{client.service_rate}% commission</Pill>
-          {client.gcio_style && <Pill bg={C.blueLight} color={C.blue}>GCIO-style</Pill>}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <h1 style={{ fontSize: 26, fontWeight: 900, color: C.ink, margin: 0, letterSpacing: '-0.04em' }}>{client.name}</h1>
+            <Pill bg={C.purpleLight} color={C.purpleMid}>{client.service_rate}% commission</Pill>
+            {client.gcio_style && <Pill bg={C.blueLight} color={C.blue}>GCIO-style</Pill>}
+          </div>
+          <button onClick={async () => {
+            if (!confirm('Delete ' + client.name + ' and ALL their events, expenses, invoices and sponsors? This cannot be undone.')) return
+            await supabase.from('clients').delete().eq('id', client.id)
+            setClientDetail(null)
+            await load()
+          }} style={{ fontSize: 12, color: C.red, background: C.redLight, border: 'none', borderRadius: 10, padding: '7px 14px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>Delete client</button>
         </div>
         <div style={grid4}>
           <StatCard label="Total spent" value={fmt(cliSpent(client.id))} color={C.red} />

@@ -367,7 +367,6 @@ export default function App() {
           </div>
         </div>
 
-        </div>
         <div style={grid4}>
           <StatCard label="Joy's net commission" value={fmt(yearNet)} color={C.purple} />
           <StatCard label="Total spent (fronted)" value={fmt(yearSpent)} color={C.red} />

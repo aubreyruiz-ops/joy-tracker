@@ -307,21 +307,70 @@ export default function App() {
 
   // ── Dashboard ───────────────────────────────────────────────────────────────
   const renderDashboard = () => {
-    const totalNet = data.clients.reduce((a,c) => a+cliNet(c.id), 0)
-    const totalSpent = data.expenses.reduce((a,e) => a+Number(e.amount), 0)
-    const pendingInvs = data.invoices.filter(i => i.status==='Pending' && Number(i.amount)>0)
+    const years = [...new Set(data.events.map(e => e.date?.slice(0,4)).filter(Boolean))].sort((a,b) => b-a)
+    const [selYear, setSelYear] = useState('all')
+
+    const filterByYear = (items, dateKey) => selYear === 'all' ? items : items.filter(item => {
+      const evId = item.event_id || item.id
+      const ev = selYear === 'all' ? null : data.events.find(e => e.id === evId)
+      if (dateKey === 'event') return item.date?.startsWith(selYear)
+      return ev ? ev.date?.startsWith(selYear) : item.date?.startsWith(selYear)
+    })
+
+    const filteredEvents = selYear === 'all' ? data.events : data.events.filter(e => e.date?.startsWith(selYear))
+    const filteredExpenses = selYear === 'all' ? data.expenses : data.expenses.filter(e => {
+      const ev = data.events.find(ev => ev.id === e.event_id)
+      return ev?.date?.startsWith(selYear)
+    })
+    const filteredInvoices = selYear === 'all' ? data.invoices : data.invoices.filter(i => {
+      const ev = data.events.find(ev => ev.id === i.event_id)
+      return ev?.date?.startsWith(selYear)
+    })
+    const filteredSponsors = selYear === 'all' ? data.sponsors : data.sponsors.filter(s => {
+      const ev = data.events.find(ev => ev.id === s.event_id)
+      return ev?.date?.startsWith(selYear)
+    })
+
+    // Recalculate totals for filtered year
+    const yearNet = selYear === 'all'
+      ? data.clients.reduce((a,c) => a+cliNet(c.id), 0)
+      : filteredEvents.reduce((a,ev) => a+evtNet(ev.id), 0) + data.extraCommissions.filter(ec => filteredEvents.some(ev => ev.id === ec.event_id)).reduce((a,ec) => a+Number(ec.amount), 0)
+    const yearSpent = filteredExpenses.reduce((a,e) => a+Number(e.amount), 0)
+    const pendingInvs = filteredInvoices.filter(i => i.status==='Pending' && Number(i.amount)>0)
     const pendingTotal = pendingInvs.reduce((a,i) => a+Number(i.amount), 0)
-    const pendingSps = data.sponsors.filter(s => s.status==='Pending' && !s.joy_contribution && Number(s.amount)>0)
+    const pendingSps = filteredSponsors.filter(s => s.status==='Pending' && !s.joy_contribution && Number(s.amount)>0)
     const pendingSpTotal = pendingSps.reduce((a,s) => a+Number(s.amount), 0)
+
+    // Per-client stats for selected year
+    const clientYearNet = cid => selYear === 'all' ? cliNet(cid) : filteredEvents.filter(e => e.client_id === cid).reduce((a,ev) => a+evtNet(ev.id), 0) + data.extraCommissions.filter(ec => filteredEvents.some(ev => ev.id === ec.event_id && ev.client_id === cid)).reduce((a,ec) => a+Number(ec.amount), 0)
+    const clientYearSpent = cid => filteredExpenses.filter(e => e.client_id === cid).reduce((a,e) => a+Number(e.amount), 0)
+    const clientYearExtSp = cid => filteredSponsors.filter(s => s.client_id === cid && !s.joy_contribution).reduce((a,s) => a+Number(s.amount), 0)
+    const clientYearSurplus = cid => {
+      if (!isGcio(cid)) return null
+      return filteredEvents.filter(e => e.client_id === cid).reduce((a,ev) => a+(evtSurplus(ev.id)||0), 0)
+    }
+
     return (
       <div style={wrap}>
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 900, color: C.ink, margin: '0 0 4px', letterSpacing: '-0.04em' }}>Overview</h1>
-          <p style={{ fontSize: 14, color: C.inkLight, margin: 0 }}>All clients · {data.events.length} events tracked</p>
+        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: C.ink, margin: '0 0 4px', letterSpacing: '-0.04em' }}>Overview</h1>
+            <p style={{ fontSize: 14, color: C.inkLight, margin: 0 }}>{filteredEvents.length} events · {data.clients.length} clients{selYear !== 'all' ? ` · ${selYear}` : ''}</p>
+          </div>
+          {/* Year filter tabs */}
+          <div style={{ display: 'flex', gap: 6, background: C.borderLight, borderRadius: 12, padding: 4 }}>
+            {['all', ...years].map(y => (
+              <button key={y} onClick={() => setSelYear(y)} style={{ fontSize: 13, fontWeight: 700, padding: '6px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: selYear === y ? C.white : 'transparent', color: selYear === y ? C.purple : C.inkFaint, boxShadow: selYear === y ? C.shadow : 'none', transition: 'all 0.15s' }}>
+                {y === 'all' ? 'All time' : y}
+              </button>
+            ))}
+          </div>
+        </div>
+
         </div>
         <div style={grid4}>
-          <StatCard label="Joy's net commission" value={fmt(totalNet)} color={C.purple} />
-          <StatCard label="Total spent (fronted)" value={fmt(totalSpent)} color={C.red} />
+          <StatCard label="Joy's net commission" value={fmt(yearNet)} color={C.purple} />
+          <StatCard label="Total spent (fronted)" value={fmt(yearSpent)} color={C.red} />
           <StatCard label="Pending invoices" value={fmt(pendingTotal)} color={pendingTotal > 0 ? C.amber : C.ink}
             sub={pendingInvs.length > 0 ? `${pendingInvs.length} invoice${pendingInvs.length > 1 ? 's' : ''} outstanding — click to view` : 'All paid up'}
             onClick={pendingTotal > 0 ? () => setShowPending(v => !v) : null} />
@@ -394,10 +443,12 @@ export default function App() {
         <SectionTitle action={<Btn size="sm" onClick={load}>↻ Refresh</Btn>}>Clients</SectionTitle>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {data.clients.map(c => {
-            const surplus = cliSurplus(c.id)
-            const jc = data.sponsors.filter(s => s.client_id === c.id && s.joy_contribution).reduce((a,s) => a+Number(s.amount), 0)
-            const waived = data.events.filter(e => e.client_id === c.id && e.commission_waived).length
-            const pending = data.invoices.filter(i => i.client_id === c.id && i.status === 'Pending' && Number(i.amount) > 0).reduce((a,i) => a+Number(i.amount), 0)
+            const surplus = clientYearSurplus(c.id)
+            const jc = filteredSponsors.filter(s => s.client_id === c.id && s.joy_contribution).reduce((a,s) => a+Number(s.amount), 0)
+            const waived = filteredEvents.filter(e => e.client_id === c.id && e.commission_waived).length
+            const pending = filteredInvoices.filter(i => i.client_id === c.id && i.status === 'Pending' && Number(i.amount) > 0).reduce((a,i) => a+Number(i.amount), 0)
+            const evCount = filteredEvents.filter(e => e.client_id === c.id).length
+            if (selYear !== 'all' && evCount === 0) return null
             return (
               <Card key={c.id} onClick={() => { setClientDetail(c); setPage('clients') }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
@@ -410,21 +461,21 @@ export default function App() {
                       {waived > 0 && <Pill bg={C.borderLight} color={C.inkLight}>{waived} waived</Pill>}
                     </div>
                     <div style={{ fontSize: 13, color: C.inkFaint, marginTop: 5 }}>
-                      {data.events.filter(e => e.client_id === c.id).length} events
+                      {evCount} event{evCount !== 1 ? 's' : ''}{selYear !== 'all' ? ` in ${selYear}` : ''}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 32, textAlign: 'right', flexShrink: 0 }}>
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: C.red, letterSpacing: '-0.02em' }}>{fmt(cliSpent(c.id))}</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: C.red, letterSpacing: '-0.02em' }}>{fmt(clientYearSpent(c.id))}</div>
                       <div style={{ fontSize: 11, color: C.inkFaint, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>spent</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: C.purple, letterSpacing: '-0.02em' }}>{fmt(cliNet(c.id))}{jc > 0 && <span style={{ fontSize: 11, color: C.red, marginLeft: 4 }}>(-{fmt(jc)})</span>}</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: C.purple, letterSpacing: '-0.02em' }}>{fmt(clientYearNet(c.id))}{jc > 0 && <span style={{ fontSize: 11, color: C.red, marginLeft: 4 }}>(-{fmt(jc)})</span>}</div>
                       <div style={{ fontSize: 11, color: C.inkFaint, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>commission</div>
                     </div>
                     {c.gcio_style
                       ? <div><div style={{ fontSize: 15, fontWeight: 800, color: (surplus||0) >= 0 ? C.green : C.red, letterSpacing: '-0.02em' }}>{fmt(surplus||0)}</div><div style={{ fontSize: 11, color: C.inkFaint, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>surplus</div></div>
-                      : <div><div style={{ fontSize: 15, fontWeight: 800, color: C.blue, letterSpacing: '-0.02em' }}>{fmt(cliExtSp(c.id))}</div><div style={{ fontSize: 11, color: C.inkFaint, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>sponsors</div></div>
+                      : <div><div style={{ fontSize: 15, fontWeight: 800, color: C.blue, letterSpacing: '-0.02em' }}>{fmt(clientYearExtSp(c.id))}</div><div style={{ fontSize: 11, color: C.inkFaint, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>sponsors</div></div>
                     }
                   </div>
                 </div>

@@ -178,6 +178,7 @@ export default function App() {
   const [showPendingSponsors, setShowPendingSponsors] = useState(false)
   const [calYear, setCalYear] = useState(new Date().getFullYear())
   const [calMonth, setCalMonth] = useState(new Date().getMonth())
+  const [selYear, setSelYear] = useState('all')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -308,7 +309,6 @@ export default function App() {
   // ── Dashboard ───────────────────────────────────────────────────────────────
   const renderDashboard = () => {
     const years = [...new Set(data.events.map(e => e.date?.slice(0,4)).filter(Boolean))].sort((a,b) => b-a)
-    const [selYear, setSelYear] = useState('all')
 
     const filterByYear = (items, dateKey) => selYear === 'all' ? items : items.filter(item => {
       const evId = item.event_id || item.id

@@ -216,6 +216,7 @@ export default function App() {
 
   const evtSpent = eid => data.expenses.filter(e => e.event_id === eid).reduce((a,e) => a+Number(e.amount), 0)
   const evtGross = eid => { const ev = ge(eid); if (ev.commission_waived) return 0; if (ev.commission_override != null) return Number(ev.commission_override); if (ev.commission_rate != null) return evtSpent(eid) * (Number(ev.commission_rate) / 100); return evtSpent(eid) * rate(ev.client_id) }
+  const commLabelFor = event => event.commission_waived ? 'waived' : event.commission_override != null ? 'fixed' : event.commission_rate != null ? `${event.commission_rate}%` : `${Math.round(rate(event.client_id)*100)}%`
   const evtJoy = eid => data.sponsors.filter(s => s.event_id === eid && s.joy_contribution).reduce((a,s) => a+Number(s.amount), 0)
   const evtExtra = eid => data.extraCommissions.filter(ec => ec.event_id === eid).reduce((a,ec) => a+Number(ec.amount), 0)
   const evtNet = eid => evtGross(eid) - evtJoy(eid) + evtExtra(eid)
@@ -313,13 +314,34 @@ export default function App() {
 
   const exportClientPDF = (client) => {
     const events = data.events.filter(e => e.client_id === client.id).sort((a,b) => a.date?.localeCompare(b.date))
-    const exps = data.expenses.filter(e => e.client_id === client.id)
-    const invs = data.invoices.filter(i => i.client_id === client.id)
     const spons = data.sponsors.filter(s => s.client_id === client.id)
     const spent = cliSpent(client.id), gross = events.reduce((a,ev) => a+evtGross(ev.id), 0)
     const gcio = client.gcio_style, allSp = spons.reduce((a,s) => a+Number(s.amount), 0), surplus = cliSurplus(client.id)
-    const pendingInv = invs.filter(i => i.status==='Pending' && Number(i.amount)>0).reduce((a,i) => a+Number(i.amount), 0)
-    const f = fmt, th = pdfTh, td = pdfTd, tbl = pdfTbl, stat = pdfStat
+    const pendingInv = data.invoices.filter(i => i.client_id===client.id && i.status==='Pending' && Number(i.amount)>0).reduce((a,i) => a+Number(i.amount), 0)
+    const f = fmt, td = pdfTd, tbl = pdfTbl, stat = pdfStat
+    const subhead = label => `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#aaa;margin:0 0 8px;">${label}</div>`
+    const eventSection = ev => {
+      const evExps = data.expenses.filter(e => e.event_id === ev.id)
+      const evInvs = data.invoices.filter(i => i.event_id === ev.id)
+      const evSpons = data.sponsors.filter(s => s.event_id === ev.id)
+      const evSpent = evtSpent(ev.id), evGross = evtGross(ev.id), evSurplus = evtSurplus(ev.id)
+      return `
+      <div style="margin-bottom:32px;padding-top:24px;border-top:2px solid #e8e6e0;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:2px;">
+          <h2 style="font-size:17px;font-weight:800;">${ev.name}</h2>
+          <div style="font-size:12px;color:#aaa;white-space:nowrap;">${ev.date}</div>
+        </div>
+        <div style="font-size:13px;color:#888;margin-bottom:16px;">${ev.city}${ev.location?' · '+ev.location:''}</div>
+        <div style="display:grid;grid-template-columns:repeat(${gcio?3:2},1fr);gap:12px;margin-bottom:20px;">
+          ${stat('Spent (fronted)',f(evSpent),'#DC2626')}
+          ${stat(`Gross commission (${commLabelFor(ev)})`,f(evGross),'#330066')}
+          ${gcio?stat('Surplus',f(evSurplus||0),(evSurplus||0)>=0?'#059669':'#DC2626'):''}
+        </div>
+        ${evExps.length>0?`${subhead('Expenses')}${tbl(['Date','Category','Vendor','Description','Amount'],evExps.map(e=>`<tr>${td([e.date,e.category,e.vendor,e.description,f(e.amount)])}</tr>`).join(''),`<tr><td colspan="4" style="padding:9px 12px;font-weight:700;">Total</td><td style="padding:9px 12px;font-weight:700;">${f(evSpent)}</td></tr>`)}`:''}
+        ${evInvs.length>0?`${subhead('Invoices')}${tbl(['Date','Amount','Status','Notes'],evInvs.map(i=>`<tr>${td([i.date,f(i.amount),i.status,i.notes||''])}</tr>`).join(''))}`:''}
+        ${evSpons.length>0?`${subhead('Sponsor payments')}${tbl(['Date','Sponsor','Amount','Status','Type','Notes'],evSpons.map(s=>`<tr>${td([s.date,s.sponsor_name,f(s.amount),s.status,s.joy_contribution?'Joy contribution':'External',s.notes||''])}</tr>`).join(''))}`:''}
+      </div>`
+    }
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${client.name}</title>
     <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111118;background:white;padding:40px;max-width:960px;margin:0 auto;}@media print{.no-print{display:none;}}</style>
     </head><body>
@@ -331,21 +353,15 @@ export default function App() {
       </div>
       <button class="no-print" onclick="window.print()" style="font-size:13px;padding:10px 20px;background:#330066;color:white;border:none;border-radius:10px;cursor:pointer;font-weight:700;">Print / Save PDF</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(${gcio?4:3},1fr);gap:12px;margin-bottom:28px;">
+    <div style="display:grid;grid-template-columns:repeat(${gcio?4:3},1fr);gap:12px;margin-bottom:8px;">
       ${stat('Events',events.length,'#111118')}
       ${stat('Total spent (fronted)',f(spent),'#DC2626')}
       ${stat('Joy gross commission',f(gross),'#330066')}
       ${gcio?stat('All sponsor income',f(allSp),'#1D4ED8'):stat('Pending invoices',f(pendingInv),'#D97706')}
       ${gcio?stat('Surplus to '+client.name,f(surplus||0),(surplus||0)>=0?'#059669':'#DC2626'):''}
     </div>
-    <h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Events</h3>
-    ${tbl(['Date','Event','City','Spent','Gross commission'],events.map(ev=>`<tr>${td([ev.date,ev.name,ev.city,f(evtSpent(ev.id)),f(evtGross(ev.id))])}</tr>`).join(''),`<tr><td colspan="3" style="padding:9px 12px;font-weight:700;">Total</td><td style="padding:9px 12px;font-weight:700;">${f(spent)}</td><td style="padding:9px 12px;font-weight:700;">${f(gross)}</td></tr>`)}
-    <h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Expenses</h3>
-    ${tbl(['Date','Event','Category','Vendor','Description','Amount'],exps.map(e=>`<tr>${td([e.date,eName(e.event_id),e.category,e.vendor,e.description,f(e.amount)])}</tr>`).join(''),`<tr><td colspan="5" style="padding:9px 12px;font-weight:700;">Total</td><td style="padding:9px 12px;font-weight:700;">${f(spent)}</td></tr>`)}
-    <h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Invoices</h3>
-    ${tbl(['Date','Event','Amount','Status','Notes'],invs.map(i=>`<tr>${td([i.date,eName(i.event_id),f(i.amount),i.status,i.notes||''])}</tr>`).join(''))}
-    ${spons.length>0?`<h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Sponsor payments</h3>${tbl(['Date','Event','Sponsor','Amount','Status','Type','Notes'],spons.map(s=>`<tr>${td([s.date,eName(s.event_id),s.sponsor_name,f(s.amount),s.status,s.joy_contribution?'Joy contribution':'External',s.notes||''])}</tr>`).join(''))}` :''}
-    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e8e6e0;font-size:11px;color:#aaa;text-align:center;">Generated by Joy Life Event Tracker · ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+    ${events.map(eventSection).join('')}
+    <div style="margin-top:8px;padding-top:16px;border-top:1px solid #e8e6e0;font-size:11px;color:#aaa;text-align:center;">Generated by Joy Life Event Tracker · ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
     </body></html>`
     openPdfWindow(html)
   }
@@ -600,7 +616,7 @@ export default function App() {
     const exps = data.expenses.filter(e => e.event_id === event.id)
     const invs = data.invoices.filter(i => i.event_id === event.id)
     const spons = data.sponsors.filter(s => s.event_id === event.id)
-    const commLabel = event.commission_waived ? 'waived' : event.commission_override != null ? 'fixed' : event.commission_rate != null ? `${event.commission_rate}%` : `${Math.round(rate(event.client_id)*100)}%`
+    const commLabel = commLabelFor(event)
 
     return (
       <div style={wrap}>

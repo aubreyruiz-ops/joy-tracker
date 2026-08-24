@@ -229,6 +229,8 @@ export default function App() {
   const save = async () => {
     if (modal === 'addClient') {
       await supabase.from('clients').insert({ name: form.name, contact: form.contact||'', service_rate: Number(form.service_rate)||10, gcio_style: !!form.gcio_style })
+    } else if (modal === 'editClient') {
+      await supabase.from('clients').update({ name: form.name, contact: form.contact||'', service_rate: Number(form.service_rate)||10, gcio_style: !!form.gcio_style }).eq('id', form.id)
     } else if (modal === 'addEvent') {
       await supabase.from('events').insert({ client_id: form.client_id, name: form.name, date: form.date, city: form.city||'', location: form.location||'', commission_waived: !!form.commission_waived, commission_rate: form.commission_rate!=null&&form.commission_rate!=='' ? Number(form.commission_rate) : null, commission_override: form.commission_override!=null&&form.commission_override!=='' ? Number(form.commission_override) : null })
     } else if (modal === 'editEvent') {
@@ -444,7 +446,6 @@ export default function App() {
           {data.clients.map(c => {
             const surplus = clientYearSurplus(c.id)
             const jc = filteredSponsors.filter(s => s.client_id === c.id && s.joy_contribution).reduce((a,s) => a+Number(s.amount), 0)
-            const waived = filteredEvents.filter(e => e.client_id === c.id && e.commission_waived).length
             const pending = filteredInvoices.filter(i => i.client_id === c.id && i.status === 'Pending' && Number(i.amount) > 0).reduce((a,i) => a+Number(i.amount), 0)
             const evCount = filteredEvents.filter(e => e.client_id === c.id).length
             if (selYear !== 'all' && evCount === 0) return null
@@ -454,10 +455,6 @@ export default function App() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em' }}>{c.name}</span>
-                      <Pill bg={C.purpleLight} color={C.purpleMid}>{c.service_rate}%</Pill>
-                      {c.gcio_style && <Pill bg={C.blueLight} color={C.blue}>GCIO</Pill>}
-                      {pending > 0 && <Pill bg={C.amberLight} color={C.amber}>{fmt(pending)} pending</Pill>}
-                      {waived > 0 && <Pill bg={C.borderLight} color={C.inkLight}>{waived} waived</Pill>}
                     </div>
                     <div style={{ fontSize: 13, color: C.inkFaint, marginTop: 5 }}>
                       {evCount} event{evCount !== 1 ? 's' : ''}{selYear !== 'all' ? ` in ${selYear}` : ''}
@@ -474,7 +471,7 @@ export default function App() {
                     </div>
                     {c.gcio_style
                       ? <div><div style={{ fontSize: 15, fontWeight: 800, color: (surplus||0) >= 0 ? C.green : C.red, letterSpacing: '-0.02em' }}>{fmt(surplus||0)}</div><div style={{ fontSize: 11, color: C.inkFaint, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>surplus</div></div>
-                      : <div><div style={{ fontSize: 15, fontWeight: 800, color: C.blue, letterSpacing: '-0.02em' }}>{fmt(clientYearExtSp(c.id))}</div><div style={{ fontSize: 11, color: C.inkFaint, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>sponsors</div></div>
+                      : <div><div style={{ fontSize: 15, fontWeight: 800, color: C.amber, letterSpacing: '-0.02em' }}>{fmt(pending)}</div><div style={{ fontSize: 11, color: C.inkFaint, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>invoices</div></div>
                     }
                   </div>
                 </div>
@@ -499,12 +496,15 @@ export default function App() {
             <Pill bg={C.purpleLight} color={C.purpleMid}>{client.service_rate}% commission</Pill>
             {client.gcio_style && <Pill bg={C.blueLight} color={C.blue}>GCIO-style</Pill>}
           </div>
-          <button onClick={async () => {
-            if (!confirm('Delete ' + client.name + ' and ALL their events, expenses, invoices and sponsors? This cannot be undone.')) return
-            await supabase.from('clients').delete().eq('id', client.id)
-            setClientDetail(null)
-            await load()
-          }} style={{ fontSize: 12, color: C.red, background: C.redLight, border: 'none', borderRadius: 10, padding: '7px 14px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>Delete client</button>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <Btn size="sm" onClick={() => openModal('editClient', { id: client.id, name: client.name, contact: client.contact, service_rate: client.service_rate, gcio_style: client.gcio_style })}>Edit client</Btn>
+            <button onClick={async () => {
+              if (!confirm('Delete ' + client.name + ' and ALL their events, expenses, invoices and sponsors? This cannot be undone.')) return
+              await supabase.from('clients').delete().eq('id', client.id)
+              setClientDetail(null)
+              await load()
+            }} style={{ fontSize: 12, color: C.red, background: C.redLight, border: 'none', borderRadius: 10, padding: '7px 14px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>Delete client</button>
+          </div>
         </div>
         <div style={grid4}>
           <StatCard label="Total spent" value={fmt(cliSpent(client.id))} color={C.red} />
@@ -938,14 +938,14 @@ export default function App() {
   // ── Modal ─────────────────────────────────────────────────────────────────────
   const renderModal = () => {
     if (!modal) return null
-    const titles = { addExtraCommission:'Add commission', editExtraCommission:'Edit commission', addClient:'New client', addEvent:'New event', editEvent:'Edit event', addExpense:'Add expense', editExpense:'Edit expense', addInvoice:'Invoice', editInvoice:'Edit invoice', addSponsor:'Add sponsor', editSponsor:'Edit sponsor' }
+    const titles = { addExtraCommission:'Add commission', editExtraCommission:'Edit commission', addClient:'New client', editClient:'Edit client', addEvent:'New event', editEvent:'Edit event', addExpense:'Add expense', editExpense:'Edit expense', addInvoice:'Invoice', editInvoice:'Edit invoice', addSponsor:'Add sponsor', editSponsor:'Edit sponsor' }
     return (
       <div style={{ position:'fixed', inset:0, background:'rgba(17,17,24,0.45)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200 }}
         onClick={e => e.target===e.currentTarget && closeModal()}>
         <div style={{ background:C.white, borderRadius:22, padding:32, width:460, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 32px 80px rgba(0,0,0,0.22)' }}>
           <h2 style={{ fontSize:20, fontWeight:900, marginBottom:24, color:C.ink, letterSpacing:'-0.03em', margin:'0 0 24px' }}>{titles[modal]}</h2>
 
-          {modal==='addClient' && <>
+          {(modal==='addClient'||modal==='editClient') && <>
             <Field label="Company name"><input style={inputSt} value={form.name||''} onChange={e=>sf('name',e.target.value)} autoFocus /></Field>
             <Field label="Contact"><input style={inputSt} value={form.contact||''} onChange={e=>sf('contact',e.target.value)} /></Field>
             <Field label="Commission rate (%)"><input style={inputSt} type="number" value={form.service_rate||10} onChange={e=>sf('service_rate',e.target.value)} /></Field>
@@ -1062,9 +1062,6 @@ export default function App() {
                     <div style={{ flex:1 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:4 }}>
                         <span style={{ fontSize:16, fontWeight:800, color:C.ink }}>{c.name}</span>
-                        <Pill bg={C.purpleLight} color={C.purpleMid}>{c.service_rate}%</Pill>
-                        {c.gcio_style && <Pill bg={C.blueLight} color={C.blue}>GCIO</Pill>}
-                        {pending > 0 && <Pill bg={C.amberLight} color={C.amber}>{fmt(pending)} pending</Pill>}
                       </div>
                       <div style={{ fontSize:13, color:C.inkFaint }}>{data.events.filter(e => e.client_id===c.id).length} events</div>
                     </div>
@@ -1073,7 +1070,7 @@ export default function App() {
                       <div><div style={{ fontSize:15, fontWeight:800, color:C.purple }}>{fmt(cliNet(c.id))}</div><div style={{ fontSize:11, color:C.inkFaint, marginTop:2, textTransform:'uppercase', letterSpacing:'0.05em' }}>commission</div></div>
                       {c.gcio_style
                         ? <div><div style={{ fontSize:15, fontWeight:800, color:(surplus||0)>=0?C.green:C.red }}>{fmt(surplus||0)}</div><div style={{ fontSize:11, color:C.inkFaint, marginTop:2, textTransform:'uppercase', letterSpacing:'0.05em' }}>surplus</div></div>
-                        : <div><div style={{ fontSize:15, fontWeight:800, color:C.blue }}>{fmt(cliExtSp(c.id))}</div><div style={{ fontSize:11, color:C.inkFaint, marginTop:2, textTransform:'uppercase', letterSpacing:'0.05em' }}>sponsors</div></div>
+                        : <div><div style={{ fontSize:15, fontWeight:800, color:C.amber }}>{fmt(pending)}</div><div style={{ fontSize:11, color:C.inkFaint, marginTop:2, textTransform:'uppercase', letterSpacing:'0.05em' }}>invoices</div></div>
                       }
                     </div>
                   </div>

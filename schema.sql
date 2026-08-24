@@ -85,7 +85,7 @@ create policy "Allow all" on sponsors for all using (true) with check (true);
 insert into clients (id, name, service_rate, gcio_style) values
   ('c1000000-0000-0000-0000-000000000001','DevRev',7,false),
   ('c1000000-0000-0000-0000-000000000002','Atomicwork',10,false),
-  ('c1000000-0000-0000-0000-000000000003','Global CIO Circle',10,true),
+  ('c1000000-0000-0000-0000-000000000003','Global CxO Circle',10,true),
   ('c1000000-0000-0000-0000-000000000004','Veery',5,false),
   ('c1000000-0000-0000-0000-000000000005','Tessell',10,false),
   ('c1000000-0000-0000-0000-000000000006','Smallest AI',10,false),

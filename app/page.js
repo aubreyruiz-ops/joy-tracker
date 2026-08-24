@@ -779,7 +779,7 @@ export default function App() {
         </div>
         {pending.length > 0 && (
           <div style={{ marginBottom: 32 }}>
-            <SectionTitle>Pending — Global CIO Circle</SectionTitle>
+            <SectionTitle>Pending — Global CxO Circle</SectionTitle>
             <DataTable
               headers={['Event', 'Sponsor', 'Amount', 'Notes']}
               rows={[

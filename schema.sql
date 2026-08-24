@@ -20,6 +20,8 @@ create table if not exists events (
   city text default '',
   location text default '',
   commission_waived boolean default false,
+  commission_override numeric,
+  commission_rate numeric,
   created_at timestamptz default now()
 );
 

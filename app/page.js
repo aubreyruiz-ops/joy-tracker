@@ -1155,8 +1155,12 @@ export default function App() {
               ))}
             </div>
           </div>
-          <button style={{ fontSize:13, padding:'7px 16px', borderRadius:10, border:`1.5px solid ${C.border}`, background:C.white, color:C.purple, cursor:'pointer', fontFamily:'inherit', fontWeight:700 }}
-            onClick={() => openModal('addClient')}>+ New client</button>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <button style={{ fontSize:13, padding:'7px 16px', borderRadius:10, border:`1.5px solid ${C.border}`, background:C.white, color:C.purple, cursor:'pointer', fontFamily:'inherit', fontWeight:700 }}
+              onClick={() => openModal('addClient')}>+ New client</button>
+            <button style={{ fontSize:13, padding:'7px 16px', borderRadius:10, border:'none', background:'none', color:C.inkFaint, cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}
+              onClick={async () => { await fetch('/api/logout', { method:'POST' }); window.location.href = '/login' }}>Log out</button>
+          </div>
         </div>
       </div>
 

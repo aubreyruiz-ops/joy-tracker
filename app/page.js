@@ -240,9 +240,9 @@ export default function App() {
 
   const save = async () => {
     if (modal === 'addClient') {
-      await supabase.from('clients').insert({ name: form.name, contact: form.contact||'', service_rate: Number(form.service_rate)||10, gcio_style: !!form.gcio_style })
+      await supabase.from('clients').insert({ name: form.name, contact: form.contact||'', email: form.email||'', service_rate: Number(form.service_rate)||10, gcio_style: !!form.gcio_style, agreement_url: form.agreement_url||null })
     } else if (modal === 'editClient') {
-      await supabase.from('clients').update({ name: form.name, contact: form.contact||'', service_rate: Number(form.service_rate)||10, gcio_style: !!form.gcio_style }).eq('id', form.id)
+      await supabase.from('clients').update({ name: form.name, contact: form.contact||'', email: form.email||'', service_rate: Number(form.service_rate)||10, gcio_style: !!form.gcio_style, agreement_url: form.agreement_url||null }).eq('id', form.id)
     } else if (modal === 'addEvent') {
       await supabase.from('events').insert({ client_id: form.client_id, name: form.name, date: form.date, city: form.city||'', location: form.location||'', commission_waived: !!form.commission_waived, commission_rate: form.commission_rate!=null&&form.commission_rate!=='' ? Number(form.commission_rate) : null, commission_override: form.commission_override!=null&&form.commission_override!=='' ? Number(form.commission_override) : null })
     } else if (modal === 'editEvent') {
@@ -549,14 +549,23 @@ export default function App() {
       <div style={wrap}>
         <BackLink label="All clients" onClick={() => setClientDetail(null)} />
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <h1 style={{ fontSize: 26, fontWeight: 900, color: C.ink, margin: 0, letterSpacing: '-0.04em' }}>{client.name}</h1>
-            <Pill bg={C.purpleLight} color={C.purpleMid}>{client.service_rate}% commission</Pill>
-            {client.gcio_style && <Pill bg={C.blueLight} color={C.blue}>GCIO-style</Pill>}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: 26, fontWeight: 900, color: C.ink, margin: 0, letterSpacing: '-0.04em' }}>{client.name}</h1>
+              <Pill bg={C.purpleLight} color={C.purpleMid}>{client.service_rate}% commission</Pill>
+              {client.gcio_style && <Pill bg={C.blueLight} color={C.blue}>GCIO-style</Pill>}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 8, fontSize: 13, color: C.inkFaint }}>
+              {client.contact && <span>{client.contact}</span>}
+              {client.email && <a href={`mailto:${client.email}`} style={{ color: C.inkFaint, textDecoration: 'none' }}>{client.email}</a>}
+              {client.agreement_url
+                ? <a href={client.agreement_url} target="_blank" rel="noreferrer" style={{ color: C.green, fontWeight: 700, textDecoration: 'none' }}>Signed agreement ↗</a>
+                : <span style={{ color: C.amber, fontWeight: 600 }}>No signed agreement on file</span>}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <Btn size="sm" onClick={() => exportClientPDF(client)}>⬇ Export</Btn>
-            <Btn size="sm" onClick={() => openModal('editClient', { id: client.id, name: client.name, contact: client.contact, service_rate: client.service_rate, gcio_style: client.gcio_style })}>Edit client</Btn>
+            <Btn size="sm" onClick={() => openModal('editClient', { id: client.id, name: client.name, contact: client.contact, email: client.email, service_rate: client.service_rate, gcio_style: client.gcio_style, agreement_url: client.agreement_url })}>Edit client</Btn>
             <button onClick={async () => {
               if (!confirm('Delete ' + client.name + ' and ALL their events, expenses, invoices and sponsors? This cannot be undone.')) return
               await supabase.from('clients').delete().eq('id', client.id)
@@ -1006,9 +1015,11 @@ export default function App() {
 
           {(modal==='addClient'||modal==='editClient') && <>
             <Field label="Company name"><input style={inputSt} value={form.name||''} onChange={e=>sf('name',e.target.value)} autoFocus /></Field>
-            <Field label="Contact"><input style={inputSt} value={form.contact||''} onChange={e=>sf('contact',e.target.value)} /></Field>
+            <Field label="Contact"><input style={inputSt} value={form.contact||''} onChange={e=>sf('contact',e.target.value)} placeholder="Contact name or phone" /></Field>
+            <Field label="Email"><input style={inputSt} type="email" value={form.email||''} onChange={e=>sf('email',e.target.value)} placeholder="name@company.com" /></Field>
             <Field label="Commission rate (%)"><input style={inputSt} type="number" value={form.service_rate||10} onChange={e=>sf('service_rate',e.target.value)} /></Field>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}><input type="checkbox" checked={!!form.gcio_style} onChange={e=>sf('gcio_style',e.target.checked)} /><label style={{ fontSize:14, color:C.ink }}>GCIO-style (sponsor income returned to client)</label></div>
+            <Field label="Signed agreement" hint="Paste a Google Drive, Dropbox, or any URL"><input style={inputSt} value={form.agreement_url||''} onChange={e=>sf('agreement_url',e.target.value)} placeholder="https://drive.google.com/..." /></Field>
           </>}
 
           {(modal==='addEvent'||modal==='editEvent') && <>
@@ -1122,7 +1133,11 @@ export default function App() {
                       <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:4 }}>
                         <span style={{ fontSize:16, fontWeight:800, color:C.ink }}>{c.name}</span>
                       </div>
-                      <div style={{ fontSize:13, color:C.inkFaint }}>{data.events.filter(e => e.client_id===c.id).length} events</div>
+                      <div style={{ fontSize:13, color:C.inkFaint }}>
+                        {data.events.filter(e => e.client_id===c.id).length} events
+                        {c.email && <> · {c.email}</>}
+                        {!c.agreement_url && <> · <span style={{ color:C.amber, fontWeight:600 }}>no agreement</span></>}
+                      </div>
                     </div>
                     <div style={{ display:'flex', gap:28, textAlign:'right' }}>
                       <div><div style={{ fontSize:15, fontWeight:800, color:C.red }}>{fmt(cliSpent(c.id))}</div><div style={{ fontSize:11, color:C.inkFaint, marginTop:2, textTransform:'uppercase', letterSpacing:'0.05em' }}>spent</div></div>

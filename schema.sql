@@ -7,8 +7,10 @@ create table if not exists clients (
   id uuid default gen_random_uuid() primary key,
   name text not null,
   contact text default '',
+  email text default '',
   service_rate numeric default 10,
   gcio_style boolean default false,
+  agreement_url text,
   created_at timestamptz default now()
 );
 

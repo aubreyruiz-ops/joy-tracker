@@ -19,6 +19,7 @@ create table if not exists events (
   client_id uuid references clients(id) on delete cascade,
   name text not null,
   date date,
+  end_date date,
   city text default '',
   location text default '',
   commission_waived boolean default false,

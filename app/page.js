@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 
 const fmt = n => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const today = () => new Date().toISOString().slice(0, 10)
+const evtDateLabel = e => e.end_date && e.end_date !== e.date ? `${e.date} – ${e.end_date}` : e.date
 
 const pdfTh = cells => cells.map(c=>`<th style="padding:8px 12px;text-align:left;background:#f9f9fb;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#888;border-bottom:1px solid #e8e6e0;">${c}</th>`).join('')
 const pdfTd = cells => cells.map(c=>`<td style="padding:9px 12px;border-bottom:1px solid #f0ede8;font-size:13px;">${c}</td>`).join('')
@@ -244,9 +245,11 @@ export default function App() {
     } else if (modal === 'editClient') {
       await supabase.from('clients').update({ name: form.name, contact: form.contact||'', email: form.email||'', service_rate: Number(form.service_rate)||10, gcio_style: !!form.gcio_style, agreement_url: form.agreement_url||null }).eq('id', form.id)
     } else if (modal === 'addEvent') {
-      await supabase.from('events').insert({ client_id: form.client_id, name: form.name, date: form.date, city: form.city||'', location: form.location||'', commission_waived: !!form.commission_waived, commission_rate: form.commission_rate!=null&&form.commission_rate!=='' ? Number(form.commission_rate) : null, commission_override: form.commission_override!=null&&form.commission_override!=='' ? Number(form.commission_override) : null })
+      const end_date = form.end_date && form.end_date >= form.date ? form.end_date : form.date
+      await supabase.from('events').insert({ client_id: form.client_id, name: form.name, date: form.date, end_date, city: form.city||'', location: form.location||'', commission_waived: !!form.commission_waived, commission_rate: form.commission_rate!=null&&form.commission_rate!=='' ? Number(form.commission_rate) : null, commission_override: form.commission_override!=null&&form.commission_override!=='' ? Number(form.commission_override) : null })
     } else if (modal === 'editEvent') {
-      await supabase.from('events').update({ name: form.name, date: form.date, city: form.city||'', location: form.location||'', commission_waived: !!form.commission_waived, commission_rate: form.commission_rate!=null&&form.commission_rate!=='' ? Number(form.commission_rate) : null, commission_override: form.commission_override!=null&&form.commission_override!=='' ? Number(form.commission_override) : null }).eq('id', form.id)
+      const end_date = form.end_date && form.end_date >= form.date ? form.end_date : form.date
+      await supabase.from('events').update({ name: form.name, date: form.date, end_date, city: form.city||'', location: form.location||'', commission_waived: !!form.commission_waived, commission_rate: form.commission_rate!=null&&form.commission_rate!=='' ? Number(form.commission_rate) : null, commission_override: form.commission_override!=null&&form.commission_override!=='' ? Number(form.commission_override) : null }).eq('id', form.id)
     } else if (modal === 'addExpense' || modal === 'editExpense') {
       const d = { description: form.description||'', amount: Number(form.amount)||0, date: form.date, category: form.category, vendor: form.vendor||'', receipt_url: form.receipt_url||null }
       if (form.id) { await supabase.from('expenses').update(d).eq('id', form.id) }
@@ -289,7 +292,7 @@ export default function App() {
       <div>
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#330066;font-weight:700;margin-bottom:8px;">Joy Life — Event Summary</div>
         <h1 style="font-size:26px;font-weight:900;letter-spacing:-0.03em;margin-bottom:8px;">${event.name}</h1>
-        <div style="font-size:14px;color:#666;">${event.date} &nbsp;·&nbsp; ${event.city} &nbsp;·&nbsp; ${event.location||''}</div>
+        <div style="font-size:14px;color:#666;">${evtDateLabel(event)} &nbsp;·&nbsp; ${event.city} &nbsp;·&nbsp; ${event.location||''}</div>
         <div style="font-size:13px;color:#888;margin-top:4px;">Client: <strong>${client.name}</strong> &nbsp;·&nbsp; ${client.service_rate}% commission</div>
       </div>
       <button class="no-print" onclick="window.print()" style="font-size:13px;padding:10px 20px;background:#330066;color:white;border:none;border-radius:10px;cursor:pointer;font-weight:700;">Print / Save PDF</button>
@@ -599,7 +602,7 @@ export default function App() {
                       {ev.commission_waived && <Pill bg={C.borderLight} color={C.inkLight}>waived</Pill>}
                       {hasUnpaid && <Pill bg={C.amberLight} color={C.amber}>unpaid invoice</Pill>}
                     </div>
-                    <div style={{ fontSize: 13, color: C.inkFaint }}>{ev.date} · {ev.city}</div>
+                    <div style={{ fontSize: 13, color: C.inkFaint }}>{evtDateLabel(ev)} · {ev.city}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 28, textAlign: 'right', flexShrink: 0 }}>
                     <div><div style={{ fontSize: 14, fontWeight: 800, color: C.red }}>{fmt(evtSpent(ev.id))}</div><div style={{ fontSize: 11, color: C.inkFaint, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>spent</div></div>
@@ -634,14 +637,14 @@ export default function App() {
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 900, color: C.ink, margin: '0 0 8px', letterSpacing: '-0.03em' }}>{event.name}</h1>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Pill bg={C.borderLight} color={C.inkMid}>{event.date}</Pill>
+              <Pill bg={C.borderLight} color={C.inkMid}>{evtDateLabel(event)}</Pill>
               <Pill bg={C.borderLight} color={C.inkMid}>{event.city}</Pill>
               {event.commission_waived && <Pill bg={C.borderLight} color={C.inkLight}>commission waived</Pill>}
             </div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
             <Btn size="sm" onClick={() => exportEventPDF(event)}>⬇ Export</Btn>
-            <Btn size="sm" onClick={() => openModal('editEvent', { id: event.id, name: event.name, date: event.date, city: event.city, location: event.location, commission_waived: event.commission_waived, commission_rate: event.commission_rate, commission_override: event.commission_override })}>Edit event</Btn>
+            <Btn size="sm" onClick={() => openModal('editEvent', { id: event.id, name: event.name, date: event.date, end_date: event.end_date||event.date, city: event.city, location: event.location, commission_waived: event.commission_waived, commission_rate: event.commission_rate, commission_override: event.commission_override })}>Edit event</Btn>
           </div>
         </div>
 
@@ -903,22 +906,43 @@ export default function App() {
     const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
     const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
     const firstDay = new Date(calYear, calMonth, 1).getDay()
-    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
-    const daysInPrev = new Date(calYear, calMonth, 0).getDate()
-    const eventsThisMonth = data.events.filter(e => { if (!e.date) return false; const d = new Date(e.date + 'T12:00:00'); return d.getFullYear() === calYear && d.getMonth() === calMonth })
-    const getEventsForDay = day => eventsThisMonth.filter(e => new Date(e.date + 'T12:00:00').getDate() === day)
+    const pad2 = n => String(n).padStart(2,'0')
+    const dstr = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`
+    const evStart = e => e.date
+    const evEnd = e => e.end_date || e.date
+    const overlaps = (a1,a2,b1,b2) => a1 <= b2 && a2 >= b1
+    const gridStart = new Date(calYear, calMonth, 1 - firstDay)
+    const cells = []
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i)
+      cells.push({ day: d.getDate(), current: d.getMonth() === calMonth, date: dstr(d) })
+    }
+    const weeks = [0,1,2,3,4,5].map(w => cells.slice(w*7, w*7+7))
+    const monthStart = dstr(new Date(calYear, calMonth, 1))
+    const monthEnd = dstr(new Date(calYear, calMonth + 1, 0))
+    const eventsThisMonth = data.events.filter(e => e.date && overlaps(evStart(e), evEnd(e), monthStart, monthEnd))
     const clientColors = ['#330066','#1D4ED8','#059669','#D97706','#DC2626','#7C3AED','#0891B2','#B45309']
     const clientColor = cid => { const idx = data.clients.findIndex(c => c.id === cid); return clientColors[idx % clientColors.length] }
     const prevMonth = () => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y-1) } else setCalMonth(m => m-1) }
     const nextMonth = () => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y+1) } else setCalMonth(m => m+1) }
-    const cells = []
-    for (let i = firstDay - 1; i >= 0; i--) cells.push({ day: daysInPrev - i, current: false })
-    for (let i = 1; i <= daysInMonth; i++) cells.push({ day: i, current: true })
-    const remaining = 42 - cells.length
-    for (let i = 1; i <= remaining; i++) cells.push({ day: i, current: false })
     const todayStr = now.toISOString().slice(0,10)
-    const isToday = day => { const d = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; return d === todayStr }
-    const upcoming = data.events.filter(e => e.date && e.date >= todayStr).sort((a,b) => a.date.localeCompare(b.date)).slice(0,8)
+    const gridStartStr = cells[0].date, gridEndStr = cells[41].date
+    const gridEvents = data.events.filter(e => e.date && overlaps(evStart(e), evEnd(e), gridStartStr, gridEndStr))
+    const MAX_LANES = 3
+    const lanes = {}
+    const laneEnds = []
+    ;[...gridEvents].sort((a,b) => {
+      if (evStart(a) !== evStart(b)) return evStart(a) < evStart(b) ? -1 : 1
+      const durA = new Date(evEnd(a)+'T12:00:00') - new Date(evStart(a)+'T12:00:00')
+      const durB = new Date(evEnd(b)+'T12:00:00') - new Date(evStart(b)+'T12:00:00')
+      return durB - durA
+    }).forEach(e => {
+      let lane = 0
+      while (laneEnds[lane] !== undefined && laneEnds[lane] >= evStart(e)) lane++
+      laneEnds[lane] = evEnd(e)
+      lanes[e.id] = lane
+    })
+    const upcoming = data.events.filter(e => e.date && evEnd(e) >= todayStr).sort((a,b) => a.date.localeCompare(b.date)).slice(0,8)
 
     return (
       <div style={wrap}>
@@ -949,26 +973,58 @@ export default function App() {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', borderBottom:`1px solid ${C.border}`, background:C.offWhite }}>
             {dayNames.map(d => <div key={d} style={{ padding:'11px 0', textAlign:'center', fontSize:11, fontWeight:700, color:C.inkFaint, textTransform:'uppercase', letterSpacing:'0.08em' }}>{d}</div>)}
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)' }}>
-            {cells.map((cell, idx) => {
-              const dayEvents = cell.current ? getEventsForDay(cell.day) : []
-              const today = isToday(cell.day) && cell.current
-              return (
-                <div key={idx} style={{ minHeight:100, padding:'8px 8px', borderRight:(idx+1)%7!==0?`1px solid ${C.borderLight}`:'none', borderBottom:idx<35?`1px solid ${C.borderLight}`:'none', background:!cell.current?C.offWhite:C.white }}>
-                  <div style={{ fontSize:13, fontWeight:today?800:400, color:today?C.white:!cell.current?C.inkFaint:C.ink, background:today?C.purple:'transparent', width:26, height:26, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:4 }}>{cell.day}</div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                    {dayEvents.slice(0,3).map(ev => (
+          {weeks.map((week, wi) => {
+            const weekStart = week[0].date, weekEnd = week[6].date
+            const weekEvents = gridEvents.filter(e => overlaps(evStart(e), evEnd(e), weekStart, weekEnd))
+            const visible = weekEvents.filter(e => lanes[e.id] < MAX_LANES)
+            const overflowForDay = dateStr => weekEvents.filter(e => lanes[e.id] >= MAX_LANES && overlaps(evStart(e), evEnd(e), dateStr, dateStr)).length
+            return (
+              <div key={wi} style={{ position:'relative' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)' }}>
+                  {week.map((cell, ci) => {
+                    const isTod = cell.date === todayStr
+                    return (
+                      <div key={ci} style={{ minHeight:132, padding:'8px 8px', borderRight:ci!==6?`1px solid ${C.borderLight}`:'none', borderBottom:wi<5?`1px solid ${C.borderLight}`:'none', background:!cell.current?C.offWhite:C.white }}>
+                        <div style={{ fontSize:13, fontWeight:isTod?800:400, color:isTod?C.white:!cell.current?C.inkFaint:C.ink, background:isTod?C.purple:'transparent', width:26, height:26, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' }}>{cell.day}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div style={{ position:'absolute', left:0, right:0, top:30, bottom:0, pointerEvents:'none' }}>
+                  {visible.map(ev => {
+                    const segStart = evStart(ev) < weekStart ? weekStart : evStart(ev)
+                    const segEnd = evEnd(ev) > weekEnd ? weekEnd : evEnd(ev)
+                    const colStart = week.findIndex(c => c.date === segStart)
+                    const colEnd = week.findIndex(c => c.date === segEnd)
+                    const startsHere = evStart(ev) === segStart
+                    const endsHere = evEnd(ev) === segEnd
+                    const lane = lanes[ev.id]
+                    return (
                       <div key={ev.id}
                         onClick={() => { setPage('clients'); setClientDetail(data.clients.find(c => c.id === ev.client_id)); setEventDetail(ev) }}
-                        style={{ fontSize:11, fontWeight:600, color:'white', background:clientColor(ev.client_id), borderRadius:5, padding:'3px 6px', cursor:'pointer', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.4 }}
-                        title={ev.name}>{ev.name}</div>
-                    ))}
-                    {dayEvents.length > 3 && <div style={{ fontSize:10, color:C.inkFaint, paddingLeft:2 }}>+{dayEvents.length-3} more</div>}
-                  </div>
+                        title={ev.name}
+                        style={{
+                          position:'absolute', top:lane*22, height:18,
+                          left:`calc(${colStart/7*100}% + ${startsHere?4:0}px)`,
+                          width:`calc(${(colEnd-colStart+1)/7*100}% - ${(startsHere?4:0)+(endsHere?4:0)}px)`,
+                          background:clientColor(ev.client_id), color:'white', fontSize:11, fontWeight:600,
+                          borderRadius:`${startsHere?5:0}px ${endsHere?5:0}px ${endsHere?5:0}px ${startsHere?5:0}px`,
+                          padding:'2px 6px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.3,
+                          cursor:'pointer', pointerEvents:'auto',
+                        }}>{ev.name}</div>
+                    )
+                  })}
+                  {week.map((cell, ci) => {
+                    const n = overflowForDay(cell.date)
+                    if (!n) return null
+                    return (
+                      <div key={ci+'-more'} style={{ position:'absolute', top:MAX_LANES*22, left:`${ci/7*100}%`, width:`${100/7}%`, fontSize:10, color:C.inkFaint, padding:'0 6px' }}>+{n} more</div>
+                    )
+                  })}
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )
+          })}
         </div>
 
         {upcoming.length > 0 && (
@@ -977,6 +1033,7 @@ export default function App() {
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {upcoming.map(ev => {
                 const client = gc(ev.client_id)
+                const ongoing = ev.date < todayStr && evEnd(ev) >= todayStr
                 const daysUntil = Math.ceil((new Date(ev.date+'T12:00:00') - new Date(todayStr+'T12:00:00')) / 86400000)
                 return (
                   <Card key={ev.id} onClick={() => { setPage('clients'); setClientDetail(client); setEventDetail(ev) }}>
@@ -987,9 +1044,9 @@ export default function App() {
                         <div style={{ fontSize:12, color:C.inkFaint, marginTop:2 }}>{client.name} · {ev.city}</div>
                       </div>
                       <div style={{ textAlign:'right', flexShrink:0 }}>
-                        <div style={{ fontSize:13, fontWeight:700, color:C.ink }}>{ev.date}</div>
-                        <div style={{ fontSize:11, color:daysUntil<=7?C.amber:C.inkFaint, fontWeight:600, marginTop:2 }}>
-                          {daysUntil===0?'Today':daysUntil===1?'Tomorrow':`In ${daysUntil} days`}
+                        <div style={{ fontSize:13, fontWeight:700, color:C.ink }}>{evtDateLabel(ev)}</div>
+                        <div style={{ fontSize:11, color:ongoing||daysUntil<=7?C.amber:C.inkFaint, fontWeight:600, marginTop:2 }}>
+                          {ongoing?'Ongoing':daysUntil===0?'Today':daysUntil===1?'Tomorrow':`In ${daysUntil} days`}
                         </div>
                       </div>
                     </div>
@@ -1026,10 +1083,13 @@ export default function App() {
             {modal==='addEvent' && <Field label="Client"><select style={inputSt} value={form.client_id||''} onChange={e=>sf('client_id',e.target.value)}>{data.clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>}
             <Field label="Event name"><input style={inputSt} value={form.name||''} onChange={e=>sf('name',e.target.value)} autoFocus /></Field>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <Field label="Date"><input style={inputSt} type="date" value={form.date||''} onChange={e=>sf('date',e.target.value)} /></Field>
-              <Field label="City"><input style={inputSt} value={form.city||''} onChange={e=>sf('city',e.target.value)} /></Field>
+              <Field label="Start date"><input style={inputSt} type="date" value={form.date||''} onChange={e=>sf('date',e.target.value)} /></Field>
+              <Field label="End date" hint="Leave blank for a single-day event"><input style={inputSt} type="date" min={form.date||''} value={form.end_date||''} onChange={e=>sf('end_date',e.target.value)} /></Field>
             </div>
-            <Field label="Location / venue"><input style={inputSt} value={form.location||''} onChange={e=>sf('location',e.target.value)} /></Field>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <Field label="City"><input style={inputSt} value={form.city||''} onChange={e=>sf('city',e.target.value)} /></Field>
+              <Field label="Location / venue"><input style={inputSt} value={form.location||''} onChange={e=>sf('location',e.target.value)} /></Field>
+            </div>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}><input type="checkbox" checked={!!form.commission_waived} onChange={e=>sf('commission_waived',e.target.checked)} /><label style={{ fontSize:14 }}>Commission waived</label></div>
             <Field label="Commission rate (%)" hint={`Leave blank to use ${cName(form.client_id)}'s default rate (${gc(form.client_id).service_rate}%)`}><input style={inputSt} type="number" value={form.commission_rate??''} onChange={e=>sf('commission_rate',e.target.value===''?null:e.target.value)} placeholder={`e.g. ${gc(form.client_id).service_rate}`} disabled={!!form.commission_waived} /></Field>
             <Field label="Commission override ($)" hint="Optional flat amount — overrides the % rate above"><input style={inputSt} type="number" value={form.commission_override??''} onChange={e=>sf('commission_override',e.target.value===''?null:e.target.value)} placeholder="e.g. 14450.16" disabled={!!form.commission_waived} /></Field>

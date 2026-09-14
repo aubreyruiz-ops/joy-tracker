@@ -48,6 +48,7 @@ create table if not exists invoices (
   amount numeric default 0,
   date date,
   status text default 'Pending',
+  invoice_number text default '',
   notes text default '',
   added_by text default '',
   created_at timestamptz default now()
@@ -62,6 +63,7 @@ create table if not exists sponsors (
   date date,
   status text default 'Pending',
   joy_contribution boolean default false,
+  invoice_number text default '',
   notes text default '',
   added_by text default '',
   created_at timestamptz default now()

@@ -10,6 +10,7 @@ const pdfTh = cells => cells.map(c=>`<th style="padding:8px 12px;text-align:left
 const pdfTd = cells => cells.map(c=>`<td style="padding:9px 12px;border-bottom:1px solid #f0ede8;font-size:13px;">${c}</td>`).join('')
 const pdfTbl = (headers, rows, foot) => `<table style="width:100%;border-collapse:collapse;border:1px solid #e8e6e0;border-radius:10px;overflow:hidden;margin-bottom:28px;"><thead><tr>${pdfTh(headers)}</tr></thead><tbody>${rows}${foot||''}</tbody></table>`
 const pdfStat = (label, value, color) => `<div style="background:#f9f9fb;border-radius:10px;padding:14px 16px;border:1px solid #e8e6e0;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#aaa;margin-bottom:6px;">${label}</div><div style="font-size:20px;font-weight:800;color:${color||'#111118'};">${value}</div></div>`
+const pdfLink = url => url ? `<a href="${String(url).replace(/"/g,'&quot;')}" target="_blank" rel="noopener" style="color:#330066;text-decoration:underline;">View</a>` : '—'
 const openPdfWindow = html => {
   const win = window.open('','_blank')
   if (!win) { alert('Please allow popups for this site to use the export feature.'); return }
@@ -284,7 +285,7 @@ export default function App() {
     const spent = evtSpent(event.id), gross = evtGross(event.id), jc = evtJoy(event.id)
     const extra = data.extraCommissions.filter(ec => ec.event_id === event.id)
     const gcio = client.gcio_style, allSp = evtAllSp(event.id), surplus = evtSurplus(event.id)
-    const f = fmt, th = pdfTh, td = pdfTd, tbl = pdfTbl, stat = pdfStat
+    const f = fmt, th = pdfTh, td = pdfTd, tbl = pdfTbl, stat = pdfStat, link = pdfLink
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${event.name}</title>
     <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111118;background:white;padding:40px;max-width:960px;margin:0 auto;}@media print{.no-print{display:none;}}</style>
     </head><body>
@@ -306,7 +307,7 @@ export default function App() {
     </div>
     ${extra.length>0?`<h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Additional commission</h3>${tbl(['Description','Amount','Notes'],extra.map(e=>`<tr>${td([e.description,f(e.amount),e.notes||''])}</tr>`).join(''))}` :''}
     <h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Expenses</h3>
-    ${tbl(['Date','Category','Vendor','Description','Amount'],exps.map(e=>`<tr>${td([e.date,e.category,e.vendor,e.description,f(e.amount)])}</tr>`).join(''),`<tr><td colspan="4" style="padding:9px 12px;font-weight:700;">Total</td><td style="padding:9px 12px;font-weight:700;">${f(spent)}</td></tr>`)}
+    ${tbl(['Date','Category','Vendor','Description','Amount','Receipt'],exps.map(e=>`<tr>${td([e.date,e.category,e.vendor,e.description,f(e.amount),link(e.receipt_url)])}</tr>`).join(''),`<tr><td colspan="4" style="padding:9px 12px;font-weight:700;">Total</td><td style="padding:9px 12px;font-weight:700;">${f(spent)}</td><td></td></tr>`)}
     <h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Invoices sent</h3>
     ${tbl(['Date','Amount','Status','Notes','Invoice #'],invs.map(i=>`<tr>${td([i.date,f(i.amount),i.status,i.notes||'',i.invoice_number||'—'])}</tr>`).join(''))}
     ${spons.length>0?`<h3 style="font-size:14px;font-weight:700;margin:0 0 10px;">Sponsor payments</h3>${tbl(['Date','Sponsor','Amount','Status','Type','Notes','Invoice #'],spons.map(s=>`<tr>${td([s.date,s.sponsor_name,f(s.amount),s.status,s.joy_contribution?'Joy contribution':'External',s.notes||'',s.invoice_number||'—'])}</tr>`).join(''))}` :''}
@@ -321,7 +322,7 @@ export default function App() {
     const spent = cliSpent(client.id), gross = events.reduce((a,ev) => a+evtGross(ev.id), 0)
     const gcio = client.gcio_style, allSp = spons.reduce((a,s) => a+Number(s.amount), 0), surplus = cliSurplus(client.id)
     const pendingInv = data.invoices.filter(i => i.client_id===client.id && i.status==='Pending' && Number(i.amount)>0).reduce((a,i) => a+Number(i.amount), 0)
-    const f = fmt, td = pdfTd, tbl = pdfTbl, stat = pdfStat
+    const f = fmt, td = pdfTd, tbl = pdfTbl, stat = pdfStat, link = pdfLink
     const subhead = label => `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#aaa;margin:0 0 8px;">${label}</div>`
     const eventSection = ev => {
       const evExps = data.expenses.filter(e => e.event_id === ev.id)
@@ -340,7 +341,7 @@ export default function App() {
           ${stat(`Gross commission (${commLabelFor(ev)})`,f(evGross),'#330066')}
           ${gcio?stat('Surplus',f(evSurplus||0),(evSurplus||0)>=0?'#059669':'#DC2626'):''}
         </div>
-        ${evExps.length>0?`${subhead('Expenses')}${tbl(['Date','Category','Vendor','Description','Amount'],evExps.map(e=>`<tr>${td([e.date,e.category,e.vendor,e.description,f(e.amount)])}</tr>`).join(''),`<tr><td colspan="4" style="padding:9px 12px;font-weight:700;">Total</td><td style="padding:9px 12px;font-weight:700;">${f(evSpent)}</td></tr>`)}`:''}
+        ${evExps.length>0?`${subhead('Expenses')}${tbl(['Date','Category','Vendor','Description','Amount','Receipt'],evExps.map(e=>`<tr>${td([e.date,e.category,e.vendor,e.description,f(e.amount),link(e.receipt_url)])}</tr>`).join(''),`<tr><td colspan="4" style="padding:9px 12px;font-weight:700;">Total</td><td style="padding:9px 12px;font-weight:700;">${f(evSpent)}</td><td></td></tr>`)}`:''}
         ${evInvs.length>0?`${subhead('Invoices')}${tbl(['Date','Amount','Status','Notes','Invoice #'],evInvs.map(i=>`<tr>${td([i.date,f(i.amount),i.status,i.notes||'',i.invoice_number||'—'])}</tr>`).join(''))}`:''}
         ${evSpons.length>0?`${subhead('Sponsor payments')}${tbl(['Date','Sponsor','Amount','Status','Type','Notes','Invoice #'],evSpons.map(s=>`<tr>${td([s.date,s.sponsor_name,f(s.amount),s.status,s.joy_contribution?'Joy contribution':'External',s.notes||'',s.invoice_number||'—'])}</tr>`).join(''))}`:''}
       </div>`

@@ -294,14 +294,14 @@ export default function App() {
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#330066;font-weight:700;margin-bottom:8px;">Joy Life — Event Summary</div>
         <h1 style="font-size:26px;font-weight:900;letter-spacing:-0.03em;margin-bottom:8px;">${event.name}</h1>
         <div style="font-size:14px;color:#666;">${evtDateLabel(event)} &nbsp;·&nbsp; ${event.city} &nbsp;·&nbsp; ${event.location||''}</div>
-        <div style="font-size:13px;color:#888;margin-top:4px;">Client: <strong>${client.name}</strong> &nbsp;·&nbsp; ${client.service_rate}% commission</div>
+        <div style="font-size:13px;color:#888;margin-top:4px;">Client: <strong>${client.name}</strong> &nbsp;·&nbsp; ${commLabelFor(event)} commission</div>
       </div>
       <button class="no-print" onclick="window.print()" style="font-size:13px;padding:10px 20px;background:#330066;color:white;border:none;border-radius:10px;cursor:pointer;font-weight:700;">Print / Save PDF</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(${jc>0?4:3},1fr);gap:12px;margin-bottom:28px;">
       ${stat('Spent (fronted)',f(spent),'#DC2626')}
       ${jc>0?stat('Joy contribution','-'+f(jc),'#DC2626'):''}
-      ${stat('Joy gross commission',f(gross),'#330066')}
+      ${stat(`Joy gross commission (${commLabelFor(event)})`,f(gross),'#330066')}
       ${gcio?stat('All sponsor income',f(allSp),'#1D4ED8'):''}
       ${gcio?stat('Surplus to '+client.name,f(surplus||0),(surplus||0)>=0?'#059669':'#DC2626'):''}
     </div>

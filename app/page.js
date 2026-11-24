@@ -217,6 +217,18 @@ export default function App() {
   const rate = id => gc(id).service_rate / 100
 
   const evtSpent = eid => data.expenses.filter(e => e.event_id === eid).reduce((a,e) => a+Number(e.amount), 0)
+  const evtBilling = eid => {
+    const invs = data.invoices.filter(i => i.event_id === eid && Number(i.amount) > 0)
+    if (invs.length === 0) return evtSpent(eid) > 0 ? 'needs' : null
+    return invs.some(i => i.status !== 'Paid') ? 'pending' : 'complete'
+  }
+  const billingPill = eid => {
+    const s = evtBilling(eid)
+    if (s === 'needs') return <Pill bg={C.redLight} color={C.red}>Needs invoice</Pill>
+    if (s === 'pending') return <Pill bg={C.amberLight} color={C.amber}>Invoice pending</Pill>
+    if (s === 'complete') return <Pill bg={C.greenLight} color={C.green}>Complete</Pill>
+    return null
+  }
   const evtGross = eid => { const ev = ge(eid); if (ev.commission_waived) return 0; if (ev.commission_override != null) return Number(ev.commission_override); if (ev.commission_rate != null) return evtSpent(eid) * (Number(ev.commission_rate) / 100); return evtSpent(eid) * rate(ev.client_id) }
   const commLabelFor = event => event.commission_waived ? 'waived' : event.commission_override != null ? 'fixed' : event.commission_rate != null ? `${event.commission_rate}%` : `${Math.round(rate(event.client_id)*100)}%`
   const evtJoy = eid => data.sponsors.filter(s => s.event_id === eid && s.joy_contribution).reduce((a,s) => a+Number(s.amount), 0)
@@ -591,7 +603,6 @@ export default function App() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {events.map(ev => {
             const surplus = evtSurplus(ev.id)
-            const hasUnpaid = data.invoices.some(i => i.event_id === ev.id && i.status === 'Pending' && Number(i.amount) > 0)
             return (
               <Card key={ev.id} onClick={() => setEventDetail(ev)}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
@@ -599,7 +610,7 @@ export default function App() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
                       <span style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>{ev.name}</span>
                       {ev.commission_waived && <Pill bg={C.borderLight} color={C.inkLight}>waived</Pill>}
-                      {hasUnpaid && <Pill bg={C.amberLight} color={C.amber}>unpaid invoice</Pill>}
+                      {billingPill(ev.id)}
                     </div>
                     <div style={{ fontSize: 13, color: C.inkFaint }}>{evtDateLabel(ev)} · {ev.city}</div>
                   </div>
@@ -638,6 +649,7 @@ export default function App() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Pill bg={C.borderLight} color={C.inkMid}>{evtDateLabel(event)}</Pill>
               <Pill bg={C.borderLight} color={C.inkMid}>{event.city}</Pill>
+              {billingPill(event.id)}
               {event.commission_waived && <Pill bg={C.borderLight} color={C.inkLight}>commission waived</Pill>}
             </div>
           </div>

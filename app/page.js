@@ -443,7 +443,7 @@ export default function App() {
               <button onClick={() => setShowPendingSponsors(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.inkFaint, fontSize: 20, lineHeight: 1, padding: 0 }}>×</button>
             </div>
             <DataTable
-              headers={['Client', 'Event', 'Sponsor', 'Amount', 'Notes']}
+              headers={['Client', 'Event', 'Sponsor', 'Amount', 'Notes', 'Invoice #', 'Link']}
               rows={[
                 ...pendingSps.map(s => (
                   <tr key={s.id} style={{ cursor: 'pointer' }}
@@ -455,12 +455,14 @@ export default function App() {
                     <TD bold>{s.sponsor_name}</TD>
                     <TD bold color={C.blue}>{fmt(s.amount)}</TD>
                     <TD faint>{s.notes}</TD>
+                    <TD faint>{s.invoice_number || '—'}</TD>
+                    <TD>{s.payment_url ? <a href={s.payment_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color:C.purple, fontWeight:700, fontSize:12, textDecoration:'none' }}>View ↗</a> : <span style={{ color:C.inkFaint }}>—</span>}</TD>
                   </tr>
                 )),
                 <tr key="total" style={{ background: C.blueLight }}>
                   <td colSpan={3} style={{ padding: '12px 18px', fontWeight: 800, color: C.blue, fontSize: 13 }}>Total pending</td>
                   <td style={{ padding: '12px 18px', fontWeight: 800, color: C.blue, fontSize: 13 }}>{fmt(pendingSpTotal)}</td>
-                  <td style={{ padding: '12px 18px' }} />
+                  <td colSpan={3} style={{ padding: '12px 18px' }} />
                 </tr>
               ]}
             />
@@ -474,7 +476,7 @@ export default function App() {
               <button onClick={() => setShowPending(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.inkFaint, fontSize: 20, lineHeight: 1, padding: 0 }}>×</button>
             </div>
             <DataTable
-              headers={['Client', 'Event', 'Amount', 'Notes']}
+              headers={['Client', 'Event', 'Amount', 'Notes', 'Invoice #', 'Link']}
               rows={[
                 ...pendingInvs.map(i => (
                   <tr key={i.id} style={{ cursor: 'pointer' }}
@@ -485,12 +487,14 @@ export default function App() {
                     <TD faint>{eName(i.event_id)}</TD>
                     <TD bold color={C.amber}>{fmt(i.amount)}</TD>
                     <TD faint>{i.notes}</TD>
+                    <TD faint>{i.invoice_number || '—'}</TD>
+                    <TD>{i.invoice_url ? <a href={i.invoice_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color:C.purple, fontWeight:700, fontSize:12, textDecoration:'none' }}>View ↗</a> : <span style={{ color:C.inkFaint }}>—</span>}</TD>
                   </tr>
                 )),
                 <tr key="total" style={{ background: C.amberLight }}>
                   <td colSpan={2} style={{ padding: '12px 18px', fontWeight: 800, color: C.amber, fontSize: 13 }}>Total outstanding</td>
                   <td style={{ padding: '12px 18px', fontWeight: 800, color: C.amber, fontSize: 13 }}>{fmt(pendingTotal)}</td>
-                  <td style={{ padding: '12px 18px' }} />
+                  <td colSpan={3} style={{ padding: '12px 18px' }} />
                 </tr>
               ]}
             />
